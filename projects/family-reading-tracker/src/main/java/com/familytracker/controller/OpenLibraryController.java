@@ -5,11 +5,10 @@ import com.familytracker.model.dto.OpenLibraryBookDto;
 import com.familytracker.service.BookService;
 import com.familytracker.service.OpenLibraryService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/openlibrary")
@@ -25,7 +24,9 @@ public class OpenLibraryController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<OpenLibraryBookDto>> search(@RequestParam(required = false) String title) {
+    public ResponseEntity<List<OpenLibraryBookDto>> search(
+        @RequestParam(required = false) String title
+    ) {
         if (title == null || title.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -35,8 +36,8 @@ public class OpenLibraryController {
     @GetMapping("/isbn/{isbn}")
     public ResponseEntity<OpenLibraryBookDto> searchByIsbn(@PathVariable String isbn) {
         return Optional.ofNullable(olService.searchByIsbn(isbn))
-                .map((OpenLibraryBookDto dto) -> ResponseEntity.ok(dto)) // ✅ strongly-typed lambda
-                .orElse(ResponseEntity.notFound().build());
+            .map((OpenLibraryBookDto dto) -> ResponseEntity.ok(dto)) // ✅ strongly-typed lambda
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/import")

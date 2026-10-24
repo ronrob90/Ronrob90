@@ -2,10 +2,9 @@ package com.familytracker.controller;
 
 import com.familytracker.model.Milestone;
 import com.familytracker.service.MilestoneService;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/milestones")

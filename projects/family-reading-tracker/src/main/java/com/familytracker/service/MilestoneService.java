@@ -1,11 +1,10 @@
 package com.familytracker.service;
 
 import com.familytracker.model.Milestone;
-import com.familytracker.Repository.MilestoneRepository;
-import org.springframework.stereotype.Service;
-
+import com.familytracker.repository.MilestoneRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 @Service
 public class MilestoneService {

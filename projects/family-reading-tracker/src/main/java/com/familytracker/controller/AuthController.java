@@ -4,7 +4,7 @@ import com.familytracker.model.User;
 import com.familytracker.model.dto.LoginRequest;
 import com.familytracker.model.dto.LoginResponse;
 import com.familytracker.model.dto.RegisterRequest;
-import com.familytracker.Repository.UserRepository;
+import com.familytracker.repository.UserRepository;
 import com.familytracker.security.JwtTokenProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,10 +24,12 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthController(AuthenticationManager authenticationManager,
-                          UserRepository userRepository,
-                          PasswordEncoder passwordEncoder,
-                          JwtTokenProvider jwtTokenProvider) {
+    public AuthController(
+        AuthenticationManager authenticationManager,
+        UserRepository userRepository,
+        PasswordEncoder passwordEncoder,
+        JwtTokenProvider jwtTokenProvider
+    ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -36,9 +38,15 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
-        if (request.getUsername() == null || request.getUsername().isBlank()
-                || request.getPassword() == null || request.getPassword().length() < 8) {
-            return ResponseEntity.badRequest().body("Username and a password of at least 8 characters are required");
+        if (
+            request.getUsername() == null ||
+            request.getUsername().isBlank() ||
+            request.getPassword() == null ||
+            request.getPassword().length() < 8
+        ) {
+            return ResponseEntity.badRequest().body(
+                "Username and a password of at least 8 characters are required"
+            );
         }
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Username is already taken");
@@ -60,7 +68,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
         String token = jwtTokenProvider.generateToken(authentication.getName());

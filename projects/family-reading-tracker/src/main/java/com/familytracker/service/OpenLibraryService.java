@@ -1,12 +1,11 @@
 package com.familytracker.service;
 
 import com.familytracker.model.dto.OpenLibraryBookDto;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class OpenLibraryService {
@@ -49,8 +48,8 @@ public class OpenLibraryService {
     }
 
     public OpenLibraryBookDto searchByIsbn(String isbn) {
-        String url = "https://openlibrary.org/api/books?bibkeys=ISBN:" + isbn +
-                "&format=json&jscmd=data";
+        String url =
+            "https://openlibrary.org/api/books?bibkeys=ISBN:" + isbn + "&format=json&jscmd=data";
 
         Map<String, Object> result = restTemplate.getForObject(url, Map.class);
         if (result == null || result.isEmpty()) return null;

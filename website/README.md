@@ -2,7 +2,7 @@
 
 React/TypeScript/Vite source for [rnald-roberts-dev-site.vercel.app](https://rnald-roberts-dev-site.vercel.app).
 
-This update retains the existing dark style, adds Kalshi and reading-tracker case studies, links projects directly to their source or overview, and includes Nemours experience for April–October 2026.
+A project-focused portfolio with case studies, source links, and fictional-data demos. It contains no résumé or employment-history section.
 
 ## Development
 
@@ -30,7 +30,7 @@ The script installs the reading frontend from its lockfile, builds demo mode, an
 
 A normal `npm run build` uses committed demo assets. For deployment from this monorepo, use `website` as project root, the Vite preset, `npm run build`, and `dist` output. Preserve the existing Vercel project and domain.
 
-Publishing source does not itself update the existing Vercel domain. Deployment must complete separately in the site's Vercel workspace.
+The existing Vercel project deploys pushes to `main` automatically. Verify GitHub checks on a branch before merging, then confirm the production deployment is ready.
 
 ## Visitor flows
 
@@ -39,3 +39,12 @@ Publishing source does not itself update the existing Vercel domain. Deployment 
 - Expand case studies for implementation details and remaining work.
 
 No live financial data, real login credentials, analytics, or private family records are required by the public demos. Backend setup and limits are in each project's README.
+
+## Editing the portfolio
+
+- `src/content/projects.ts`: project descriptions, case studies, technology lists, and links.
+- `src/components/ProjectCard.tsx`: shared project-card presentation.
+- `src/App.tsx`: page sections, navigation, and contact links.
+- `src/App.css`: layout, colors, responsive rules, and focus styles.
+
+Run the root formatting commands described in [CONTRIBUTING.md](../CONTRIBUTING.md) before committing.

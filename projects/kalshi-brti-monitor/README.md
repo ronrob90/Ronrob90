@@ -13,9 +13,9 @@ The current source includes:
 - Fresh market/order-book requests, normalized quotes, and agreement checks.
 - Quote-age, poll-duration, and time-to-close checks.
 - Local dashboards, JSON snapshots, a read-only MCP endpoint, technical indicators, and a local research recorder.
-- Unit tests for published final-minute averages and out-of-order index readings.
+- Automated checks for market discovery, pagination, quote reconciliation, freshness boundaries, HTTP parsing, JSON compatibility, technical calculations, and index tracking.
 
-The October 2026 market-discovery fix is included in `KalshiMarketService.java`. Earlier starter documentation describing discovery as unimplemented is superseded by this README.
+The code is organized around a typed market-data pipeline. See the [architecture guide](docs/architecture.md) for the key files and the order of validation checks.
 
 ## Sample-data demo
 
@@ -41,16 +41,16 @@ Open `http://127.0.0.1:8080`. The application binds to localhost. Without creden
 
 `KALSHI_TARGET` is an optional initial manual target. A successfully discovered market supplies its own strike.
 
-| Local path | Purpose |
-| --- | --- |
-| `/` | BRTI dashboard |
-| `/markets.html` | Market dashboard |
-| `/intelligence.html` | Technical-analysis dashboard |
-| `/api/snapshot` | BRTI snapshot |
-| `/api/market/current` | Current market snapshot |
-| `/api/market/combined` | Combined readiness |
-| `/api/intelligence/technical` | Technical indicators |
-| `/mcp` | Read-only JSON-RPC interface |
+| Local path                    | Purpose                      |
+| ----------------------------- | ---------------------------- |
+| `/`                           | BRTI dashboard               |
+| `/markets.html`               | Market dashboard             |
+| `/intelligence.html`          | Technical-analysis dashboard |
+| `/api/snapshot`               | BRTI snapshot                |
+| `/api/market/current`         | Current market snapshot      |
+| `/api/market/combined`        | Combined readiness           |
+| `/api/intelligence/technical` | Technical indicators         |
+| `/mcp`                        | Read-only JSON-RPC interface |
 
 ## Verification
 
@@ -60,4 +60,4 @@ Run `./mvnw test` and `node --test demo/quality.test.mjs`. Tests need no live cr
 
 The application does not place orders. The combined snapshot deliberately retains `NO_TRADE_UNTIL_PROBABILITY_MODEL_VALIDATED`; estimated win probability and expected value are unset. Independently collected feeds are not an atomic market snapshot. Fresh data does not establish an executable fill or a forecasting edge.
 
-Research output is local and excluded from Git. The localhost API is not an authenticated public multi-user service. Further work includes market-discovery integration tests, replay fixtures, and evaluation of any future probability model against held-out data.
+Research output is local and excluded from Git. The localhost API is not an authenticated public multi-user service. Further work includes recorded-feed replay fixtures and evaluation of any future probability model against held-out data. Existing tests use fictional fixtures and a loopback HTTP server; they do not verify live exchange behavior.

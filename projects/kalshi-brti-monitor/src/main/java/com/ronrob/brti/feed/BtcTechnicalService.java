@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -31,6 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Public Kraken BTC/USD spot OHLC technical context, 100% read-only.
@@ -39,23 +38,31 @@ import org.slf4j.LoggerFactory;
  */
 @Service
 public class BtcTechnicalService {
+
     private static final Logger LOG = LoggerFactory.getLogger(BtcTechnicalService.class);
     private static final String BASE = "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=";
-    private static final int[] MINUTES = {1, 5, 15, 60, 240, 1440};
-    private static final String[] LABELS = {"1m", "5m", "15m", "1h", "4h", "1d"};
-    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("uuuuMMdd").withZone(ZoneOffset.UTC);
-    private static final String JOURNAL_HEADER = "closed_at_utc,exchange,spot_close,ema8,ema21,ema50,rsi14,atr14,adx14,plus_di14,minus_di14,rolling_vwap20,trend,momentum\n";
+    private static final int[] MINUTES = { 1, 5, 15, 60, 240, 1440 };
+    private static final String[] LABELS = { "1m", "5m", "15m", "1h", "4h", "1d" };
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("uuuuMMdd").withZone(
+        ZoneOffset.UTC
+    );
+    private static final String JOURNAL_HEADER =
+        "closed_at_utc,exchange,spot_close,ema8,ema21,ema50,rsi14,atr14,adx14,plus_di14,minus_di14,rolling_vwap20,trend,momentum\n";
 
     private final ObjectMapper mapper;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
-            .followRedirects(HttpClient.Redirect.NEVER).build();
+    private final HttpClient http = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(5))
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .build();
     private final Map<String, Map<String, Object>> latest = new ConcurrentHashMap<>();
     private ScheduledExecutorService worker;
     private long polls;
     private String lastJournaledCandle;
     private boolean warnedJournal;
 
-    public BtcTechnicalService(ObjectMapper mapper) { this.mapper = mapper; }
+    public BtcTechnicalService(ObjectMapper mapper) {
+        this.mapper = mapper;
+    }
 
     @PostConstruct
     public void start() {
@@ -74,8 +81,11 @@ public class BtcTechnicalService {
     }
 
     private void updateSafely() {
-        try { update(); }
-        catch (Exception ex) { LOG.warn("BTC technical polling error: {}", ex.getClass().getSimpleName()); }
+        try {
+            update();
+        } catch (Exception ex) {
+            LOG.warn("BTC technical polling error: {}", ex.getClass().getSimpleName());
+        }
     }
 
     private void update() {
@@ -88,7 +98,11 @@ public class BtcTechnicalService {
             try {
                 List<BtcTechnicalMath.Candle> candles = downloadClosedCandles(MINUTES[i]);
                 Instant evaluatedAt = Instant.now();
-                Map<String, Object> frame = BtcTechnicalMath.analyze(candles, MINUTES[i], evaluatedAt);
+                Map<String, Object> frame = BtcTechnicalMath.analyze(
+                    candles,
+                    MINUTES[i],
+                    evaluatedAt
+                );
                 frame.put("fetchedAt", evaluatedAt.toString());
                 frame.put("fetchedAtEpochMs", evaluatedAt.toEpochMilli());
                 latest.put(label, frame);
@@ -100,28 +114,46 @@ public class BtcTechnicalService {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("status", "ERROR");
                 error.put("fresh", false);
-                error.put("error", "Could not fetch/parse Kraken " + label + " candles: " + ex.getClass().getSimpleName());
+                error.put(
+                    "error",
+                    "Could not fetch/parse Kraken " +
+                        label +
+                        " candles: " +
+                        ex.getClass().getSimpleName()
+                );
                 error.put("fetchedAt", Instant.now().toString());
                 latest.put(label, error);
-                LOG.warn("Kraken BTC/USD {} candle poll failed ({})", label, ex.getClass().getSimpleName());
+                LOG.warn(
+                    "Kraken BTC/USD {} candle poll failed ({})",
+                    label,
+                    ex.getClass().getSimpleName()
+                );
             }
         }
     }
 
     /** Exposed for isolated data-validation tests; rejects the forming last bar. */
-    List<BtcTechnicalMath.Candle> downloadClosedCandles(int intervalMinutes) throws IOException, InterruptedException {
+    List<BtcTechnicalMath.Candle> downloadClosedCandles(int intervalMinutes)
+        throws IOException, InterruptedException {
         HttpRequest req = HttpRequest.newBuilder(URI.create(BASE + intervalMinutes))
-                .timeout(Duration.ofSeconds(6)).header("Accept", "application/json")
-                .header("User-Agent", "KalshiBRTIMonitorResearch/0.4 (public OHLC, read-only)").GET().build();
+            .timeout(Duration.ofSeconds(6))
+            .header("Accept", "application/json")
+            .header("User-Agent", "KalshiBRTIMonitorResearch/0.4 (public OHLC, read-only)")
+            .GET()
+            .build();
         HttpResponse<String> response = http.send(req, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) throw new IOException("Kraken HTTP " + response.statusCode());
+        if (response.statusCode() != 200) throw new IOException(
+            "Kraken HTTP " + response.statusCode()
+        );
         JsonNode root = mapper.readTree(response.body());
         JsonNode errors = root.path("error");
-        if (!errors.isArray() || !errors.isEmpty()) throw new IOException("Kraken returned an API error");
+        if (!errors.isArray() || !errors.isEmpty()) throw new IOException(
+            "Kraken returned an API error"
+        );
         JsonNode result = root.path("result");
         if (!result.isObject()) throw new IOException("Kraken result missing");
         JsonNode raw = null;
-        for (Iterator<Map.Entry<String, JsonNode>> it = result.fields(); it.hasNext();) {
+        for (Iterator<Map.Entry<String, JsonNode>> it = result.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> item = it.next();
             if (!"last".equals(item.getKey()) && item.getValue().isArray()) {
                 if (raw != null) throw new IOException("Ambiguous Kraken pair");
@@ -146,14 +178,30 @@ public class BtcTechnicalService {
                 double vwap = Double.parseDouble(row.get(5).asText());
                 double vol = Double.parseDouble(row.get(6).asText());
                 long count = Long.parseLong(row.get(7).asText());
-                if (ts <= 0 || ts + durationSec > now ||
-                        !Double.isFinite(open) || !Double.isFinite(high) || !Double.isFinite(low) ||
-                        !Double.isFinite(close) || !Double.isFinite(vwap) || !Double.isFinite(vol) ||
-                        low <= 0 || low > high || open < low || open > high ||
-                        close < low || close > high || vwap < 0 || vol < 0 || count < 0) {
+                if (
+                    ts <= 0 ||
+                    ts + durationSec > now ||
+                    !Double.isFinite(open) ||
+                    !Double.isFinite(high) ||
+                    !Double.isFinite(low) ||
+                    !Double.isFinite(close) ||
+                    !Double.isFinite(vwap) ||
+                    !Double.isFinite(vol) ||
+                    low <= 0 ||
+                    low > high ||
+                    open < low ||
+                    open > high ||
+                    close < low ||
+                    close > high ||
+                    vwap < 0 ||
+                    vol < 0 ||
+                    count < 0
+                ) {
                     continue; // Ignore invalid or not-yet-finalized provider data.
                 }
-                candles.add(new BtcTechnicalMath.Candle(ts, open, high, low, close, vwap, vol, count));
+                candles.add(
+                    new BtcTechnicalMath.Candle(ts, open, high, low, close, vwap, vol, count)
+                );
             } catch (NumberFormatException ex) {
                 throw new IOException("Invalid OHLC numeric field", ex);
             }
@@ -175,14 +223,27 @@ public class BtcTechnicalService {
         long now = System.currentTimeMillis();
         for (int i = 0; i < LABELS.length; i++) {
             String label = LABELS[i];
-            Map<String, Object> frame = new LinkedHashMap<>(latest.getOrDefault(label, Map.of(
-                    "status", "INITIALIZING", "fresh", false,
-                    "error", "Waiting for first Kraken " + label + " fetch")));
+            Map<String, Object> frame = new LinkedHashMap<>(
+                latest.getOrDefault(
+                    label,
+                    Map.of(
+                        "status",
+                        "INITIALIZING",
+                        "fresh",
+                        false,
+                        "error",
+                        "Waiting for first Kraken " + label + " fetch"
+                    )
+                )
+            );
             Object t = frame.remove("fetchedAtEpochMs");
             Long age = t instanceof Long v ? Math.max(0, now - v) : null;
             long maxPollAgeMs = i == 0 ? 90_000L : i == 1 ? 120_000L : i == 2 ? 180_000L : 450_000L;
-            boolean fresh = "READY".equals(frame.get("status")) &&
-                    Boolean.TRUE.equals(frame.get("fresh")) && age != null && age <= maxPollAgeMs;
+            boolean fresh =
+                "READY".equals(frame.get("status")) &&
+                Boolean.TRUE.equals(frame.get("fresh")) &&
+                age != null &&
+                age <= maxPollAgeMs;
             // Account for time passing after analysis without waiting for another poll.
             Object end = frame.get("lastClosedCandleEndEpochSeconds");
             if (end instanceof Long closedEpoch) {
@@ -199,12 +260,16 @@ public class BtcTechnicalService {
         body.put("symbol", "BTC/USD (Kraken XBTUSD; USD quote)");
         body.put("fetchedAtUtc", Instant.now().toString());
         body.put("timeframes", timeframes);
-        boolean core = ready(timeframes, "1m") && ready(timeframes, "5m") && ready(timeframes, "15m");
+        boolean core =
+            ready(timeframes, "1m") && ready(timeframes, "5m") && ready(timeframes, "15m");
         body.put("technicalContextReady", core);
         body.put("tradeDecision", "NO_TRADE_UNTIL_PROBABILITY_MODEL_VALIDATED");
         body.put("estimatedWinProbability", null);
-        body.put("warning", "Kraken BTC/USD spot OHLC is NOT CF Benchmarks BRTI. Uses CLOSED bars only, polled every ~25-225s. " +
-                "Spot TA cannot determine Kalshi settlement or an edge. No calibrated probability, trade automation, or guaranteed fills.");
+        body.put(
+            "warning",
+            "Kraken BTC/USD spot OHLC is NOT CF Benchmarks BRTI. Uses CLOSED bars only, polled every ~25-225s. " +
+                "Spot TA cannot determine Kalshi settlement or an edge. No calibrated probability, trade automation, or guaranteed fills."
+        );
         return body;
     }
 
@@ -220,26 +285,51 @@ public class BtcTechnicalService {
             Files.createDirectories(folder);
             Path path = folder.resolve("btc-ta-" + DAY.format(Instant.parse(closed)) + ".csv");
             if (!Files.exists(path) || Files.size(path) == 0) {
-                Files.writeString(path, JOURNAL_HEADER, StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                Files.writeString(
+                    path,
+                    JOURNAL_HEADER,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND
+                );
             }
             StringBuilder row = new StringBuilder();
-            Object[] fields = {closed, "Kraken BTC/USD", frame.get("close"), frame.get("ema8"),
-                    frame.get("ema21"), frame.get("ema50"), frame.get("rsi14"), frame.get("atr14"),
-                    frame.get("adx14"), frame.get("plusDi14"), frame.get("minusDi14"),
-                    frame.get("rollingVwap20ClosedBars"), frame.get("trendStructure"), frame.get("momentumContext")};
+            Object[] fields = {
+                closed,
+                "Kraken BTC/USD",
+                frame.get("close"),
+                frame.get("ema8"),
+                frame.get("ema21"),
+                frame.get("ema50"),
+                frame.get("rsi14"),
+                frame.get("atr14"),
+                frame.get("adx14"),
+                frame.get("plusDi14"),
+                frame.get("minusDi14"),
+                frame.get("rollingVwap20ClosedBars"),
+                frame.get("trendStructure"),
+                frame.get("momentumContext"),
+            };
             for (int i = 0; i < fields.length; i++) {
                 if (i > 0) row.append(',');
                 row.append(fields[i] == null ? "" : fields[i].toString());
             }
             row.append('\n');
-            Files.writeString(path, row.toString(), StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            Files.writeString(
+                path,
+                row.toString(),
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND
+            );
             lastJournaledCandle = closed;
             warnedJournal = false;
         } catch (IOException | RuntimeException ex) {
             if (!warnedJournal) {
-                LOG.warn("BTC TA research CSV write failed; live monitoring unaffected: {}", ex.getClass().getSimpleName());
+                LOG.warn(
+                    "BTC TA research CSV write failed; live monitoring unaffected: {}",
+                    ex.getClass().getSimpleName()
+                );
                 warnedJournal = true;
             }
         }

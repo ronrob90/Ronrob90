@@ -27,7 +27,13 @@ function LoginPage() {
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
         <input name="username" placeholder="Username" onChange={handleChange} required />
-        <input name="password" type="password" placeholder="Password" onChange={handleChange} required />
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          onChange={handleChange}
+          required
+        />
         <button type="submit">Login</button>
       </form>
     </div>

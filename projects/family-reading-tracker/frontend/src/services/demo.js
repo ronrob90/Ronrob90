@@ -14,8 +14,10 @@ export async function demoAdapter(config) {
   } else if (config.url === "/api/books") {
     data = [...books];
   } else if (config.url.startsWith("/api/openlibrary/search?")) {
-    const query = new URL(config.url, "https://demo.invalid").searchParams.get("title").toLowerCase();
-    data = catalog.filter(book => book.title.toLowerCase().includes(query));
+    const query = new URL(config.url, "https://demo.invalid").searchParams
+      .get("title")
+      .toLowerCase();
+    data = catalog.filter((book) => book.title.toLowerCase().includes(query));
   } else if (config.url === "/api/openlibrary/import") {
     const book = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
     data = { id: books.length + 1, ...book };

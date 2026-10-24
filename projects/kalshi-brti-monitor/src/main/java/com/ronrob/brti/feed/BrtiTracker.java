@@ -2,17 +2,17 @@ package com.ronrob.brti.feed;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 /** Holds only BRTI market data; never stores trade orders or credentials. */
 @Component
 public class BrtiTracker {
+
     private final ObjectMapper mapper;
     private BigDecimal strike;
     private BigDecimal latest;
@@ -34,8 +34,11 @@ public class BrtiTracker {
     }
 
     public synchronized void setStrike(BigDecimal newStrike) {
-        if (newStrike == null || newStrike.compareTo(BigDecimal.ZERO) <= 0
-                || newStrike.compareTo(new BigDecimal("10000000")) >= 0) {
+        if (
+            newStrike == null ||
+            newStrike.compareTo(BigDecimal.ZERO) <= 0 ||
+            newStrike.compareTo(new BigDecimal("10000000")) >= 0
+        ) {
             throw new IllegalArgumentException("Enter a valid positive BTC price to beat.");
         }
         strike = newStrike;
@@ -71,27 +74,36 @@ public class BrtiTracker {
         JsonNode settlement = msg.path("last_60s_windowed_average_15min");
         // Present only during the minute before each :00/:15/:30/:45 close.
         finalMinuteAverage = moneyOrNull(settlement.path("value"));
-        finalMinuteCount = settlement.has("window_size") ? settlement.path("window_size").asInt() : null;
+        finalMinuteCount = settlement.has("window_size")
+            ? settlement.path("window_size").asInt()
+            : null;
         lastError = null;
     }
 
     private BigDecimal moneyOrNull(JsonNode node) {
         return node.isMissingNode() || node.isNull() || node.asText().isBlank()
-                ? null : new BigDecimal(node.asText());
+            ? null
+            : new BigDecimal(node.asText());
     }
 
     public synchronized Map<String, Object> snapshot() {
         Map<String, Object> result = new LinkedHashMap<>();
         long now = System.currentTimeMillis();
         Long ageMs = receivedLocallyMs == null ? null : now - receivedLocallyMs;
-        boolean fresh = sourceTimestampMs != null && ageMs != null && ageMs <= 5000
-                && Math.abs(now - sourceTimestampMs) <= 15000;
+        boolean fresh =
+            sourceTimestampMs != null &&
+            ageMs != null &&
+            ageMs <= 5000 &&
+            Math.abs(now - sourceTimestampMs) <= 15000;
         result.put("status", connectionStatus);
         result.put("error", lastError);
         result.put("indexId", "BRTI");
         result.put("dataFresh", fresh);
         result.put("dataAgeMs", ageMs);
-        result.put("observedAt", sourceTimestampMs == null ? null : Instant.ofEpochMilli(sourceTimestampMs).toString());
+        result.put(
+            "observedAt",
+            sourceTimestampMs == null ? null : Instant.ofEpochMilli(sourceTimestampMs).toString()
+        );
         result.put("brti", latest);
         result.put("strike", strike);
         result.put("gap", latest != null && strike != null ? latest.subtract(strike) : null);
@@ -102,16 +114,26 @@ public class BrtiTracker {
         BigDecimal required = null;
         // This is a conditional arithmetic illustration assuming 60 equally-weighted
         // index samples in the window. Kalshi's server-provided average is authoritative.
-        if (strike != null && finalMinuteAverage != null
-                && finalMinuteCount != null && finalMinuteCount > 0 && finalMinuteCount < 60) {
+        if (
+            strike != null &&
+            finalMinuteAverage != null &&
+            finalMinuteCount != null &&
+            finalMinuteCount > 0 &&
+            finalMinuteCount < 60
+        ) {
             int left = 60 - finalMinuteCount;
-            required = strike.multiply(BigDecimal.valueOf(60))
-                    .subtract(finalMinuteAverage.multiply(BigDecimal.valueOf(finalMinuteCount)))
-                    .divide(BigDecimal.valueOf(left), MathContext.DECIMAL64);
+            required = strike
+                .multiply(BigDecimal.valueOf(60))
+                .subtract(finalMinuteAverage.multiply(BigDecimal.valueOf(finalMinuteCount)))
+                .divide(BigDecimal.valueOf(left), MathContext.DECIMAL64);
         }
         result.put("requiredRemainingAverageAssuming60Samples", required);
-        result.put("warning", !fresh ? "DATA NOT FRESH. Do not use for settlement decisions."
-                : "Index feed is live; final settlement uses the official published 60-second BRTI average.");
+        result.put(
+            "warning",
+            !fresh
+                ? "DATA NOT FRESH. Do not use for settlement decisions."
+                : "Index feed is live; final settlement uses the official published 60-second BRTI average."
+        );
         return result;
     }
 }

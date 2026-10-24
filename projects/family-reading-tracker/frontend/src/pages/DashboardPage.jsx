@@ -22,8 +22,12 @@ function DashboardPage() {
         setFamilies(familyResponse.data);
         setBooks(bookResponse.data);
       })
-      .catch(() => { if (active) setError("Unable to load the dashboard. Please log in again or retry."); });
-    return () => { active = false; };
+      .catch(() => {
+        if (active) setError("Unable to load the dashboard. Please log in again or retry.");
+      });
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
   const handleLogout = () => {
@@ -37,8 +41,11 @@ function DashboardPage() {
       {error && <p role="alert">{error}</p>}
       {!DEMO_MODE && <button onClick={handleLogout}>Logout</button>}
       {DEMO_MODE && <button onClick={() => window.location.reload()}>Reset sample data</button>}
-      <br /><br />
-      <Link className="button-link" to="/search">Search for books</Link>
+      <br />
+      <br />
+      <Link className="button-link" to="/search">
+        Search for books
+      </Link>
 
       <h3>Families:</h3>
       <ul>

@@ -1,16 +1,16 @@
 package com.ronrob.brti.web;
 
 import com.ronrob.brti.feed.BrtiTracker;
+import java.math.BigDecimal;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api")
 public class BrtiController {
+
     private final BrtiTracker tracker;
 
     public BrtiController(BrtiTracker tracker) {
@@ -29,7 +29,9 @@ public class BrtiController {
             tracker.setStrike(request.value());
             return ResponseEntity.ok(Map.of("updated", true));
         } catch (IllegalArgumentException error) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", error.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                Map.of("error", error.getMessage())
+            );
         }
     }
 

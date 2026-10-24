@@ -1,11 +1,10 @@
 package com.familytracker.service;
 
 import com.familytracker.model.ReadingSession;
-import com.familytracker.Repository.ReadingSessionRepository;
-import org.springframework.stereotype.Service;
-
+import com.familytracker.repository.ReadingSessionRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ReadingSessionService {

@@ -13,9 +13,15 @@ export default function BookSearchPage() {
     setBusy(true);
     setMessage("");
     try {
-      const response = await api.get(`/api/openlibrary/search?title=${encodeURIComponent(title.trim())}`);
+      const response = await api.get(
+        `/api/openlibrary/search?title=${encodeURIComponent(title.trim())}`,
+      );
       setResults(response.data);
-      setMessage(response.data.length ? `${response.data.length} results found.` : "No books found. Try another title.");
+      setMessage(
+        response.data.length
+          ? `${response.data.length} results found.`
+          : "No books found. Try another title.",
+      );
     } catch {
       setMessage("Search failed. Please try again.");
     } finally {
@@ -35,21 +41,45 @@ export default function BookSearchPage() {
     }
   }
 
-  return <section>
-    <Link to="/">← Dashboard</Link>
-    <h2>Book search</h2>
-    <form onSubmit={handleSearch}>
-      <label htmlFor="book-title">Book title</label>
-      <div className="search-row">
-        <input id="book-title" type="search" placeholder="Try garden" value={title}
-          onChange={event => setTitle(event.target.value)} required />
-        <button type="submit" disabled={busy || !title.trim()}>{busy ? "Working…" : "Search"}</button>
-      </div>
-    </form>
-    <p role="status" aria-live="polite">{message}</p>
-    <ul className="book-results">{results.map(book => <li key={`${book.title}-${book.author}-${book.isbn}`}>
-      <span>{book.title} {book.author && `by ${book.author}`}</span>
-      <button disabled={busy} onClick={() => handleImport(book)} aria-label={`Import ${book.title}`}>Import</button>
-    </li>)}</ul>
-  </section>;
+  return (
+    <section>
+      <Link to="/">← Dashboard</Link>
+      <h2>Book search</h2>
+      <form onSubmit={handleSearch}>
+        <label htmlFor="book-title">Book title</label>
+        <div className="search-row">
+          <input
+            id="book-title"
+            type="search"
+            placeholder="Try garden"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            required
+          />
+          <button type="submit" disabled={busy || !title.trim()}>
+            {busy ? "Working…" : "Search"}
+          </button>
+        </div>
+      </form>
+      <p role="status" aria-live="polite">
+        {message}
+      </p>
+      <ul className="book-results">
+        {results.map((book) => (
+          <li key={`${book.title}-${book.author}-${book.isbn}`}>
+            <span>
+              {book.title} {book.author && `by ${book.author}`}
+            </span>
+            <button
+              disabled={busy}
+              onClick={() => handleImport(book)}
+              aria-label={`Import ${book.title}`}
+            >
+              Import
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

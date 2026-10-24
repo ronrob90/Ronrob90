@@ -3,6 +3,16 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
   java:
     runs-on: ubuntu-latest
     strategy:
@@ -13,7 +23,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
       - run: sh ./mvnw -B test
         working-directory: projects/${{ matrix.project }}
@@ -26,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - run: npm ci
         working-directory: ${{ matrix.directory }}
       - run: npm run lint

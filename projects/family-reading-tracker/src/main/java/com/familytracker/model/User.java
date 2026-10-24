@@ -1,11 +1,10 @@
 package com.familytracker.model;
 
-import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.*;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
 import java.util.Set;
+import lombok.*;
 
 @Entity
 @Table(name = "users")
@@ -31,8 +30,5 @@ public class User {
     @JsonIgnoreProperties("members")
     private Family family;
 
-
     private boolean enabled = true;
-
-
 }

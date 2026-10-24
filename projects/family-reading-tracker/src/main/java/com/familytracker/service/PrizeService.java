@@ -1,11 +1,10 @@
 package com.familytracker.service;
 
 import com.familytracker.model.Prize;
-import com.familytracker.Repository.PrizeRepository;
-import org.springframework.stereotype.Service;
-
+import com.familytracker.repository.PrizeRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 @Service
 public class PrizeService {

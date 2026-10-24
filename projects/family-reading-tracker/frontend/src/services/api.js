@@ -10,7 +10,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (
-    !DEMO_MODE && token &&
+    !DEMO_MODE &&
+    token &&
     !config.url.includes("/auth/login") &&
     !config.url.includes("/auth/register")
   ) {

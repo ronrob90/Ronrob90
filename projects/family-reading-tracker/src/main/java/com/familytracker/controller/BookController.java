@@ -3,10 +3,9 @@ package com.familytracker.controller;
 import com.familytracker.model.Book;
 import com.familytracker.service.BookService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/books")
@@ -26,16 +25,18 @@ public class BookController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Book> getById(@PathVariable Long id) {
-        return service.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return service
+            .getById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/isbn/{isbn}")
     public ResponseEntity<Book> getByIsbn(@PathVariable String isbn) {
-        return service.getByIsbn(isbn)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return service
+            .getByIsbn(isbn)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")

@@ -14,17 +14,33 @@ import java.util.Map;
  * Uses Wilder RSI, Wilder ATR, and Wilder +DI/-DI/ADX.
  */
 public final class BtcTechnicalMath {
-    private BtcTechnicalMath() { }
 
-    public record Candle(long startEpochSeconds, double open, double high, double low,
-                         double close, double vwap, double volume, long tradeCount) { }
+    private BtcTechnicalMath() {}
 
-    public static Map<String, Object> analyze(List<Candle> candles, int intervalMinutes, Instant evaluatedAt) {
+    public record Candle(
+        long startEpochSeconds,
+        double open,
+        double high,
+        double low,
+        double close,
+        double vwap,
+        double volume,
+        long tradeCount
+    ) {}
+
+    public static Map<String, Object> analyze(
+        List<Candle> candles,
+        int intervalMinutes,
+        Instant evaluatedAt
+    ) {
         if (intervalMinutes <= 0) throw new IllegalArgumentException("Invalid timeframe");
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("intervalMinutes", intervalMinutes);
         out.put("closedCandleCount", candles.size());
-        out.put("indicatorPolicy", "All calculations use finalized Kraken BTC/USD OHLC candles. No forming candle or settlement-price substitution.");
+        out.put(
+            "indicatorPolicy",
+            "All calculations use finalized Kraken BTC/USD OHLC candles. No forming candle or settlement-price substitution."
+        );
         if (candles.size() < 55) {
             out.put("status", "INSUFFICIENT_HISTORY");
             out.put("error", "Need at least 55 completed candles, got " + candles.size());
@@ -35,8 +51,9 @@ public final class BtcTechnicalMath {
         Candle last = candles.get(n - 1);
         long lastCloseEpoch = last.startEpochSeconds() + (long) intervalMinutes * 60;
         long secondsSinceClose = Math.max(0, evaluatedAt.getEpochSecond() - lastCloseEpoch);
-        boolean fresh = lastCloseEpoch <= evaluatedAt.getEpochSecond() + 5 &&
-                secondsSinceClose <= Math.max(150L, (long) intervalMinutes * 120L + 30L);
+        boolean fresh =
+            lastCloseEpoch <= evaluatedAt.getEpochSecond() + 5 &&
+            secondsSinceClose <= Math.max(150L, (long) intervalMinutes * 120L + 30L);
 
         double[] closes = new double[n];
         for (int i = 0; i < n; i++) closes[i] = candles.get(i).close();
@@ -49,7 +66,8 @@ public final class BtcTechnicalMath {
         // Kraken's OHLC VWAP is per-bar, not a daily anchored/session VWAP.
         // Rolling 20 closed bars only; volume-weighted from per-bar exchange VWAP.
         int from = Math.max(0, n - 20);
-        double totalWeighted = 0, totalVolume = 0;
+        double totalWeighted = 0,
+            totalVolume = 0;
         for (int i = from; i < n; i++) {
             Candle c = candles.get(i);
             if (c.volume() > 0 && c.vwap() > 0) {
@@ -75,7 +93,10 @@ public final class BtcTechnicalMath {
 
         out.put("status", fresh ? "READY" : "STALE");
         out.put("fresh", fresh);
-        out.put("lastClosedCandleStartUtc", Instant.ofEpochSecond(last.startEpochSeconds()).toString());
+        out.put(
+            "lastClosedCandleStartUtc",
+            Instant.ofEpochSecond(last.startEpochSeconds()).toString()
+        );
         out.put("lastClosedCandleEndUtc", Instant.ofEpochSecond(lastCloseEpoch).toString());
         out.put("lastClosedCandleEndEpochSeconds", lastCloseEpoch);
         out.put("secondsSinceLastClose", secondsSinceClose);
@@ -94,37 +115,47 @@ public final class BtcTechnicalMath {
         out.put("plusDi14", num(d.plusDi));
         out.put("minusDi14", num(d.minusDi));
         out.put("rollingVwap20ClosedBars", rollingVwap == null ? null : num(rollingVwap));
-        out.put("rollingVwapExplanation", "Kraken per-bar VWAP weighted by volume for the last 20 completed candles, NOT an anchored/session VWAP.");
+        out.put(
+            "rollingVwapExplanation",
+            "Kraken per-bar VWAP weighted by volume for the last 20 completed candles, NOT an anchored/session VWAP."
+        );
         out.put("previous20High", num(priorHigh));
         out.put("previous20Low", num(priorLow));
         out.put("trendStructure", trend);
         out.put("momentumContext", momentum);
         out.put("priceVsEma21Pct", num(100.0 * (last.close() / ema21 - 1.0)));
-        out.put("atr14PctOfClose", num(100.0 * d.atr / last.close()));
+        out.put("atr14PctOfClose", num((100.0 * d.atr) / last.close()));
         List<Double> recent = new ArrayList<>();
         for (int i = Math.max(0, n - 48); i < n; i++) recent.add(num(closes[i]));
         out.put("recent48ClosedPrices", recent);
-        out.put("warning", "Technical context only. Kraken spot candles are not BRTI and cannot by themselves estimate Kalshi win probability or guarantee an entry.");
+        out.put(
+            "warning",
+            "Technical context only. Kraken spot candles are not BRTI and cannot by themselves estimate Kalshi win probability or guarantee an entry."
+        );
         return out;
     }
 
     private static Double num(double v) {
-        return Double.isFinite(v) ? BigDecimal.valueOf(v).setScale(6, RoundingMode.HALF_UP).doubleValue() : null;
+        return Double.isFinite(v)
+            ? BigDecimal.valueOf(v).setScale(6, RoundingMode.HALF_UP).doubleValue()
+            : null;
     }
 
     static double ema(double[] prices, int period) {
         if (prices.length < period) throw new IllegalArgumentException("Not enough prices");
         double sum = 0;
         for (int i = 0; i < period; i++) sum += prices[i];
-        double e = sum / period;
-        double a = 2.0 / (period + 1);
-        for (int i = period; i < prices.length; i++) e = prices[i] * a + e * (1 - a);
-        return e;
+        double average = sum / period;
+        double smoothingFactor = 2.0 / (period + 1);
+        for (int i = period; i < prices.length; i++) average =
+            prices[i] * smoothingFactor + average * (1 - smoothingFactor);
+        return average;
     }
 
     static double rsi14(double[] prices) {
         if (prices.length < 15) throw new IllegalArgumentException("Not enough prices");
-        double gains = 0, losses = 0;
+        double gains = 0,
+            losses = 0;
         for (int i = 1; i <= 14; i++) {
             double delta = prices[i] - prices[i - 1];
             gains += Math.max(0, delta);
@@ -142,36 +173,50 @@ public final class BtcTechnicalMath {
         return 100 - 100 / (1 + gains / losses);
     }
 
-    private record Directional(double atr, double plusDi, double minusDi, double adx) { }
+    private record Directional(double atr, double plusDi, double minusDi, double adx) {}
 
     private static Directional directional14(List<Candle> bars) {
         int n = bars.size();
-        double[] trs = new double[n], pdms = new double[n], mdms = new double[n];
+        double[] trueRanges = new double[n],
+            positiveMovements = new double[n],
+            negativeMovements = new double[n];
         for (int i = 1; i < n; i++) {
-            Candle p = bars.get(i - 1), c = bars.get(i);
-            trs[i] = Math.max(c.high() - c.low(),
-                    Math.max(Math.abs(c.high() - p.close()), Math.abs(c.low() - p.close())));
+            Candle p = bars.get(i - 1),
+                c = bars.get(i);
+            trueRanges[i] = Math.max(
+                c.high() - c.low(),
+                Math.max(Math.abs(c.high() - p.close()), Math.abs(c.low() - p.close()))
+            );
             double up = c.high() - p.high();
             double down = p.low() - c.low();
-            pdms[i] = up > down && up > 0 ? up : 0;
-            mdms[i] = down > up && down > 0 ? down : 0;
+            positiveMovements[i] = up > down && up > 0 ? up : 0;
+            negativeMovements[i] = down > up && down > 0 ? down : 0;
         }
-        double trSum = 0, pdmSum = 0, mdmSum = 0;
+        double trueRangeSum = 0,
+            positiveMovementSum = 0,
+            negativeMovementSum = 0;
         for (int i = 1; i <= 14; i++) {
-            trSum += trs[i]; pdmSum += pdms[i]; mdmSum += mdms[i];
+            trueRangeSum += trueRanges[i];
+            positiveMovementSum += positiveMovements[i];
+            negativeMovementSum += negativeMovements[i];
         }
-        double lastPlus = 0, lastMinus = 0, adx = 0, dxSum = 0;
+        double lastPlus = 0,
+            lastMinus = 0,
+            adx = 0,
+            dxSum = 0;
         int dxSamples = 0;
         for (int i = 14; i < n; i++) {
             if (i > 14) {
-                trSum = trSum - trSum / 14 + trs[i];
-                pdmSum = pdmSum - pdmSum / 14 + pdms[i];
-                mdmSum = mdmSum - mdmSum / 14 + mdms[i];
+                trueRangeSum = trueRangeSum - trueRangeSum / 14 + trueRanges[i];
+                positiveMovementSum =
+                    positiveMovementSum - positiveMovementSum / 14 + positiveMovements[i];
+                negativeMovementSum =
+                    negativeMovementSum - negativeMovementSum / 14 + negativeMovements[i];
             }
-            lastPlus = trSum == 0 ? 0 : 100 * pdmSum / trSum;
-            lastMinus = trSum == 0 ? 0 : 100 * mdmSum / trSum;
+            lastPlus = trueRangeSum == 0 ? 0 : (100 * positiveMovementSum) / trueRangeSum;
+            lastMinus = trueRangeSum == 0 ? 0 : (100 * negativeMovementSum) / trueRangeSum;
             double sum = lastPlus + lastMinus;
-            double dx = sum == 0 ? 0 : 100 * Math.abs(lastPlus - lastMinus) / sum;
+            double dx = sum == 0 ? 0 : (100 * Math.abs(lastPlus - lastMinus)) / sum;
             if (dxSamples < 14) {
                 dxSum += dx;
                 dxSamples++;
@@ -180,6 +225,6 @@ public final class BtcTechnicalMath {
                 adx = (adx * 13 + dx) / 14;
             }
         }
-        return new Directional(trSum / 14, lastPlus, lastMinus, adx);
+        return new Directional(trueRangeSum / 14, lastPlus, lastMinus, adx);
     }
 }

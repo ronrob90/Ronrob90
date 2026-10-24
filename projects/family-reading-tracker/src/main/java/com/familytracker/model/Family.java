@@ -1,8 +1,8 @@
 package com.familytracker.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.util.List;
+import lombok.*;
 
 @Entity
 @Getter
