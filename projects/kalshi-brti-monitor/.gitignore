@@ -1,0 +1,9 @@
+/target/
+/.idea/
+*.iml
+*.log
+.env
+*.pem
+*.key
+*.txt
+!README.txt

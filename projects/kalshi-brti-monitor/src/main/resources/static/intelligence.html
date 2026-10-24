@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BTC Technical + Kalshi BRTI Intelligence (Read-only)</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#ecf1fc;background:#0b1020}
+*{box-sizing:border-box}body{margin:0;padding:24px 15px}main{max-width:1180px;margin:auto}
+header{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:1.65rem;line-height:1.2;margin:0 0 5px;letter-spacing:-.02em}h2{font-size:1.06rem;margin:0 0 14px}
+.sub,small,.muted{color:#9baccc}.sub{margin:0 0 16px}.pill{background:#26324d;border-radius:20px;padding:8px 13px;font-weight:700;font-size:.83rem}
+.pill.good{background:#123b36;color:#92ffcf}.pill.warn{background:#513520;color:#ffd498}.pill.bad{background:#512a37;color:#ffbdc6}
+.notice{padding:12px 14px;border:1px solid #52617d;background:#18243b;border-radius:10px;margin:12px 0 16px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.panel,.stat{border:1px solid #30405f;background:#161f33;padding:16px;border-radius:13px}
+.label{font-size:.82rem;color:#a2b2ce;margin-bottom:4px}.value{font-size:1.45rem;font-weight:750;font-variant-numeric:tabular-nums}
+.mini{font-size:.8rem;color:#b1bdd0;margin-top:4px}.cols{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;margin:14px 0}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #32415c}.row:last-child{border-bottom:0}
+.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+.frame{border:1px solid #334565;background:#19243a;border-radius:13px;padding:15px;min-height:198px}
+.frame h3{margin:0;font-size:1.03rem}.frame .framehead{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:8px}
+.frame .framegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}.frame .v{font-size:.94rem;font-weight:680;font-variant-numeric:tabular-nums}
+.pos{color:#76e6ac}.neg{color:#ff969e}.neutral{color:#ffe19c}button{border:0;border-radius:8px;background:#acd6ff;color:#102035;padding:10px 13px;cursor:pointer;font-weight:700}
+button:hover{background:#c9e5ff}canvas{display:block;width:100%;height:200px;background:#0f1830;border-radius:9px}
+.mono{font-family:Consolas,monospace;font-size:.78rem;overflow-wrap:anywhere}
+.foot{font-size:.82rem;color:#aab9d3;margin:16px 0}a{color:#b4d4ff}
+@media(max-width:880px){.frames,.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:1fr}}
+@media(max-width:580px){.frames,.grid{grid-template-columns:1fr}.value{font-size:1.25rem}}
+</style>
+</head>
+<body><main>
+<header><div><h1>BTC Technical + Kalshi Intelligence</h1><p class="sub">Six Kraken spot timeframes · Official Kalshi BRTI · Quote validation · Read-only research</p></div><span class="pill warn" id="health">Starting…</span></header>
+<div class="notice" id="notice">Waiting for first Kraken candle download. Initial six-timeframe load can take 15–40 seconds.</div>
+<div class="grid" aria-label="Kalshi settlement and spot summary">
+ <div class="stat"><div class="label">Official BRTI (settlement source)</div><div class="value" id="brti">—</div><div class="mini" id="brtiAge">—</div></div>
+ <div class="stat"><div class="label">Kalshi price to beat</div><div class="value" id="strike">—</div><div class="mini" id="delta">—</div></div>
+ <div class="stat"><div class="label">Kraken BTC/USD · last CLOSED 1m candle</div><div class="value" id="spot">—</div><div class="mini">Not BRTI; not a live spot quote</div></div>
+ <div class="stat"><div class="label">Kalshi BUY YES / UP ask</div><div class="value" id="yes">—</div><div class="mini" id="yesQuality">—</div></div>
+ <div class="stat"><div class="label">Kalshi BUY NO / DOWN ask</div><div class="value" id="no">—</div><div class="mini" id="noQuality">—</div></div>
+ <div class="stat"><div class="label">Contract / time remaining</div><div class="value" id="close">—</div><div class="mini mono" id="ticker">—</div></div>
+</div>
+<div class="cols">
+ <section class="panel"><h2>Last 48 completed 1-minute Kraken closes</h2><canvas id="plot" aria-label="Kraken price history of closed one-minute bars" role="img"></canvas><div class="mini" id="chartNote">Chart uses only finished candles. It is NOT the official BRTI.</div></section>
+ <section class="panel"><h2>Read-only trade safeguards</h2>
+  <div class="row"><span>Quote quality</span><b id="quality">—</b></div>
+  <div class="row"><span>Live BRTI / Kalshi market</span><b id="settleReady">—</b></div>
+  <div class="row"><span>1m / 5m / 15m TA source fresh</span><b id="taReady">—</b></div>
+  <div class="row"><span>Quote eligible for analysis</span><b id="quoteReady">—</b></div>
+  <div class="row"><span>Quote reasons</span><span class="mono" id="reasons">—</span></div>
+  <div class="row"><span>Estimated winning probability</span><b class="neutral">NOT CALIBRATED</b></div>
+  <div class="row"><span>Trade decision</span><b class="neg">NO TRADE</b></div>
+ </section>
+</div>
+<h2>Multi-timeframe technical context — CLOSED Kraken spot candles</h2>
+<section class="frames" id="frames" aria-label="BTC technical indicators"></section>
+<section class="panel" style="margin-top:14px"><button id="copy">Copy complete snapshot for ChatGPT</button><span id="copied" class="mini" style="margin-left:10px"></span></section>
+<p class="foot">Technical trend and momentum are descriptive, not trade recommendations. EMA(8/21/50), Wilder RSI(14), Wilder ADX(14) with +DI/−DI, Wilder ATR(14), the previous 20 closed-bar range, and a volume-weighted 20-closed-bar VWAP proxy are provided for research. This proxy is NOT an anchored session VWAP. Different exchanges and benchmark data can diverge. Kalshi settlement relies on the official final-minute BRTI average. Data can be delayed, stale, or temporarily unavailable. <a href="/markets.html">Existing Kalshi order-book dashboard</a> · <a href="/">Original BRTI dashboard</a>.</p>
+</main>
+<script>
+'use strict';
+const el = id=>document.getElementById(id), set=(id,t)=>el(id).textContent=t;
+const cash=(x,d=2)=>x==null?'—':Number(x).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:d,maximumFractionDigits:d});
+const value=(x,d=2)=>x==null?'—':Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pcent=(x)=>x==null?'—':(Number(x)*100).toFixed(2)+'¢';
+const stamp=x=>x?new Date(x).toLocaleTimeString():'—';
+const frames=['1m','5m','15m','1h','4h','1d'];
+const asText=x=>x==null?'—':String(x);
+let latest=null;
+for(const name of frames){
+ const item=document.createElement('article');item.className='frame';item.id='card-'+name;
+ item.innerHTML='<div class="framehead"><h3>'+name+'</h3><span class="pill warn" id="status-'+name+'">Waiting</span></div><div class="framegrid" id="values-'+name+'"></div><div class="mini" id="meta-'+name+'">—</div>';
+ el('frames').appendChild(item);
+}
+function line(canvas, values){
+ const pixelRatio=window.devicePixelRatio||1,w=canvas.clientWidth||500,h=200;
+ canvas.width=Math.max(1,Math.floor(w*pixelRatio));canvas.height=Math.floor(h*pixelRatio);
+ const ctx=canvas.getContext('2d');ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+ ctx.clearRect(0,0,w,h);
+ if(!Array.isArray(values)||values.length<2){ctx.fillStyle='#b6c1d3';ctx.fillText('Waiting for completed 1-minute bars…',20,h/2);return}
+ const min=Math.min(...values),max=Math.max(...values),range=Math.max(max-min,.01);
+ ctx.strokeStyle='#40516d';ctx.lineWidth=1;
+ for(let i=0;i<3;i++){let y=20+i*(h-40)/2;ctx.beginPath();ctx.moveTo(9,y);ctx.lineTo(w-13,y);ctx.stroke()}
+ ctx.beginPath();values.forEach((v,i)=>{const x=14+i*(w-28)/(values.length-1); const y=h-23-(v-min)/range*(h-46);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+ ctx.lineWidth=2.5;ctx.strokeStyle='#77baff';ctx.stroke();ctx.fillStyle='#cbd8f0';ctx.font='12px system-ui';
+ ctx.fillText(value(max,2),18,16);ctx.fillText(value(min,2),18,h-8);
+}
+function renderFrame(name,f){
+ const good=Boolean(f.fresh);const label=el('status-'+name);
+ label.className='pill '+(good?'good':f.status==='ERROR'?'bad':'warn');label.textContent=good?'Fresh':asText(f.status);
+ const metrics=[['Closed-bar price',cash(f.close)],['EMA 8 / 21',cash(f.ema8)+' / '+cash(f.ema21)],['EMA 50',cash(f.ema50)],['RSI 14',value(f.rsi14,1)],['ADX 14',value(f.adx14,1)],['+DI / −DI',value(f.plusDi14,1)+' / '+value(f.minusDi14,1)],['ATR 14',cash(f.atr14)],['20-bar volume VWAP',cash(f.rollingVwap20ClosedBars)],['Prior 20 high / low',cash(f.previous20High)+' / '+cash(f.previous20Low)],['Trend',asText(f.trendStructure)],['Momentum',asText(f.momentumContext)]];
+ const grid=el('values-'+name);grid.replaceChildren();
+ if(f.close!=null) for(const [k,v] of metrics){let wrapper=document.createElement('div');let a=document.createElement('div'),b=document.createElement('div');a.className='label';a.textContent=k;b.className='v';b.textContent=v;wrapper.append(a,b);grid.append(wrapper)}
+ set('meta-'+name, f.error?f.error:('Last closed '+stamp(f.lastClosedCandleEndUtc)+' · '+asText(f.closedCandleCount)+' bars · age '+asText(f.secondsSinceLastClose)+'s'));
+}
+async function update(){
+ try{
+  const res=await fetch('/api/intelligence/combined',{cache:'no-store'});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const b=await res.json();latest=b;
+  const m=b.market||{},i=b.brti||{},t=b.technical||{}, fs=t.timeframes||{};
+  set('brti',cash(i.brti));set('brtiAge',i.observedAt?'Sample '+stamp(i.observedAt)+' · '+value(i.dataAgeMs,0)+'ms old':'Index unavailable');
+  set('strike',cash(m.priceToBeat));set('delta',i.gap==null?'—':(Number(i.gap)>=0?'+':'')+cash(i.gap)+' vs target');
+  set('spot',cash(fs['1m']?.close));set('yes',pcent(m.yesAskDollars));set('no',pcent(m.noAskDollars));
+  set('yesQuality',m.yesAskSize==null?'No ask depth':m.yesAskSize+' top-of-book contracts');
+  set('noQuality',m.noAskSize==null?'No ask depth':m.noAskSize+' top-of-book contracts');
+  set('close',m.secondsToClose==null?'—':m.secondsToClose+' seconds');set('ticker',m.ticker||asText(m.error));
+  const q=m.quoteQuality||{};set('quality',q.status||'—');set('reasons',Array.isArray(q.reasons)?q.reasons.join(', ')||'none':'—');
+  set('settleReady',b.validForSettlementComparison?'YES':'NO');set('taReady',t.technicalContextReady?'YES':'NO');
+  set('quoteReady',m.quoteReadyForAnalysis?'YES':'NO');
+  for(const name of frames)renderFrame(name,fs[name]||{status:'INITIALIZING',fresh:false});
+  line(el('plot'),fs['1m']?.recent48ClosedPrices);
+  set('chartNote',fs['1m']?.lastClosedCandleEndUtc?'Most recent completed 1m bar ends '+stamp(fs['1m'].lastClosedCandleEndUtc):'Awaiting complete 1m bars');
+  const ok=Boolean(b.combinedContextReady);const health=el('health');health.textContent=ok?'DATA AVAILABLE · RESEARCH ONLY':'CHECK SOURCE FRESHNESS';health.className='pill '+(ok?'good':'warn');
+  set('notice',m.error?'Market: '+m.error+' · TA: '+(t.technicalContextReady?'ready':'waiting/stale'):
+    !t.technicalContextReady?'Kraken TA is loading, stale, or unavailable. Kalshi BRTI can still be monitored independently.':
+    !m.quoteReadyForAnalysis?'TA ready, but quote evaluation is currently blocked or expiring. No trade recommended.':
+    'BRTI + spot TA available for research; NO TRADE until a settlement probability model is independently validated.');
+ }catch(e){el('health').textContent='OFFLINE';el('health').className='pill bad';set('notice','Intelligence endpoint unavailable: '+e.message)}
+}
+el('copy').onclick=async()=>{if(!latest)return;try{await navigator.clipboard.writeText('Kalshi + Kraken spot BTC Technical Intelligence — read only; NOT a trade signal:\n'+JSON.stringify(latest,null,2));set('copied','Copied')}catch(e){set('copied','Clipboard blocked by browser')}};
+update();setInterval(update,10000);window.addEventListener('resize',()=>{if(latest)line(el('plot'),latest.technical?.timeframes?.['1m']?.recent48ClosedPrices)});
+</script></body></html>

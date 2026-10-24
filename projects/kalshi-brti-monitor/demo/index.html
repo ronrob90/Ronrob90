@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalshi Monitor | Data Quality Demo</title><meta name="description" content="A fictional-data demonstration of quote freshness and consistency checks."><link rel="stylesheet" href="style.css"></head>
+<body><main>
+<a class="back" href="/#kalshi">← Ronald Roberts · Portfolio</a>
+<header><p class="eyebrow">Kalshi BRTI Market Monitor</p><h1>Can this snapshot<br>be used for analysis?</h1><p class="intro">Change the scenario to see how freshness, timing, and consistency checks affect a market snapshot.</p></header>
+<p class="notice"><strong>Sample-data demo.</strong> All values are fictional. This page makes no API calls and places no orders. Passing these checks does not establish a trading signal.</p>
+<section class="workspace" aria-label="Snapshot review">
+<div class="card"><label for="scenario">Choose a scenario</label><select id="scenario">
+<option value="aligned">Fresh and aligned</option><option value="stale">Stale quote</option><option value="mismatch">Conflicting feeds</option><option value="closing">Closing in 10 seconds</option><option value="slow">Slow API response</option>
+</select><p id="explanation"></p><dl id="metrics"></dl></div>
+<div class="card"><p class="eyebrow">Review outcome</p><h2 id="outcome" aria-live="polite"></h2><ul id="checks"></ul></div>
+</section>
+<footer><p>This simplified demo illustrates selected checks from <code>KalshiMarketService.marketSnapshot()</code>. The Java application also handles active-contract discovery, BRTI data, quote normalization, and independent source timestamps.</p><a href="https://github.com/ronrob90/Ronrob90/tree/main/projects/kalshi-brti-monitor">Read the source and project notes →</a></footer>
+</main><script type="module" src="app.mjs"></script></body></html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Kalshi BRTI Monitor</title>
+  <style>
+    :root { font: 16px system-ui, -apple-system, Segoe UI, sans-serif; color: #edf0f4; background: #0f1218; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 34px 20px; }
+    main { max-width: 930px; margin: auto; }
+    h1 { font-size: 2rem; margin: 0 0 8px; }
+    p { line-height: 1.5; color: #b6c1d0; }
+    .header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 12px; margin-bottom: 16px; }
+    .pill { padding: 8px 12px; border-radius: 999px; background:#222b38; color:#dce6f6; font-size:.86rem; }
+    .good { color: #67e8af !important; } .bad { color: #ff8f96 !important; }
+    .panel { padding: 23px; border:1px solid #283244; border-radius:15px; background:#181e29; margin-bottom:16px; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+    .metric { padding:18px; border: 1px solid #344054; border-radius: 12px; background:#1f2735; }
+    .label { font-size:.8rem; color:#abb8c9; margin-bottom:10px; }
+    .value { font-size:1.75rem; font-weight:750; font-variant-numeric: tabular-nums; overflow-wrap:anywhere; }
+    .sub { color:#aebbd0; font-size:.87rem; margin-top: 8px; }
+    input { background:#0d1320; color:#fff; border:1px solid #445368; border-radius:9px; padding:12px; font-size:1rem; min-width: 0; width: 200px; }
+    button { padding:12px 18px; border:none; background:#d6e8ff; color:#101722; border-radius:9px; font-size:.94rem; font-weight:700; cursor:pointer; }
+    button:hover { background:#b8dcff; }
+    .inputs { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+    .status { font-family:ui-monospace, monospace; font-size:.82rem; overflow-wrap:anywhere; }
+    .tiny { font-size:.8rem; }
+    .warn { padding: 12px; border: 1px solid #7a5248; background:#3b2a2a; color:#ffe5d4; border-radius:9px; }
+    .foot { margin-top:20px; }
+    @media (max-width:570px) { .grid {grid-template-columns:1fr} .value{font-size:1.5rem} }
+  </style>
+</head>
+<body><main>
+  <div class="header"><div><h1>Bitcoin BRTI Monitor</h1><p>Kalshi reference index • Read-only • Running on your PC</p></div><span class="pill" id="state">Connecting…</span></div>
+  <div class="panel">
+    <div class="inputs">
+      <label for="target">Price to beat (USD)</label>
+      <input id="target" type="number" step="0.01" min="1" placeholder="e.g. 81449.16">
+      <button id="saveTarget">Set target</button>
+      <span class="status" id="saveStatus"></span>
+    </div>
+    <p class="tiny">Manually enter the exact contract's price to beat from Kalshi. Changing the contract requires changing this target. Nothing here places orders.</p>
+  </div>
+  <div class="grid">
+    <div class="metric"><div class="label">Actual BRTI index</div><div class="value" id="brti">—</div><div class="sub" id="observed">Waiting for authenticated feed</div></div>
+    <div class="metric"><div class="label">Price to beat</div><div class="value" id="strike">—</div><div class="sub" id="gap">Enter the target to compare</div></div>
+    <div class="metric"><div class="label">Trailing BRTI 60s average</div><div class="value" id="rolling">—</div><div class="sub" id="rollingCount">Not a final settlement value</div></div>
+    <div class="metric"><div class="label">Kalshi final-minute running average</div><div class="value" id="finalAverage">—</div><div class="sub" id="finalCount">Only visible during final minute before :00, :15, :30, :45</div></div>
+    <div class="metric"><div class="label">Approx. remaining average needed for UP</div><div class="value" id="required">—</div><div class="sub">Illustrative: assumes a complete 60-sample minute; the server's final-minute field governs.</div></div>
+    <div class="metric"><div class="label">Feed freshness</div><div class="value" id="fresh">—</div><div class="sub" id="statusLine">—</div></div>
+  </div>
+  <div class="panel">
+    <button id="copy">Copy BRTI snapshot for ChatGPT</button>
+    <p id="copyStatus" class="status"></p>
+    <p class="tiny">Share only the snapshot, never your API key ID/private key. A Webull quote may differ and is not Kalshi's settlement source.</p>
+  </div>
+  <div class="warn" id="warning">Loading…</div>
+  <p class="foot tiny">Local dashboard: 127.0.0.1 only. No trading permissions are exercised by this application. The displayed index and averages are data, not guaranteed predictions of settlement or profit. Verify against published Kalshi results.</p>
+<script>
+  let snapshot = null;
+  const el = id => document.getElementById(id);
+  const usd = x => x == null ? '—' : new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:4}).format(Number(x));
+  const val = (id,text) => { el(id).textContent = text; };
+  async function refresh() {
+    try {
+      const response = await fetch('/api/snapshot', {cache:'no-store'});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      snapshot = await response.json();
+      val('state', snapshot.status || 'Unknown');
+      val('brti', usd(snapshot.brti));
+      val('strike', usd(snapshot.strike));
+      val('gap', snapshot.gap == null ? 'Enter the target to compare' : (Number(snapshot.gap)>=0?'+':'') + usd(snapshot.gap) + ' relative to target');
+      el('gap').className = 'sub ' + (Number(snapshot.gap)>=0?'good':'bad');
+      val('rolling', usd(snapshot.trailing60sAverage));
+      val('rollingCount', snapshot.trailing60sCount == null ? 'Waiting for observations' : snapshot.trailing60sCount + ' prior ticks in trailing window');
+      val('finalAverage', usd(snapshot.finalMinuteAverage));
+      val('finalCount', snapshot.finalMinuteCount == null ? 'Outside final minute / no index updates yet' : snapshot.finalMinuteCount + ' accumulated index observations');
+      val('required', usd(snapshot.requiredRemainingAverageAssuming60Samples));
+      val('observed', snapshot.observedAt ? 'Index timestamp: ' + new Date(snapshot.observedAt).toLocaleString() : 'Waiting for index updates');
+      val('fresh', snapshot.dataFresh ? 'LIVE' : 'STALE');
+      el('fresh').className='value ' + (snapshot.dataFresh?'good':'bad');
+      val('statusLine', snapshot.dataAgeMs == null ? 'No readings yet' : (snapshot.dataAgeMs/1000).toFixed(1)+' s since local receipt');
+      val('warning', snapshot.error ? 'Feed error: ' + snapshot.error : snapshot.warning || 'No status available');
+      if (snapshot.strike != null && document.activeElement !== el('target') && !el('target').value) el('target').value = snapshot.strike;
+    } catch (error) {
+      val('state','DASHBOARD ERROR'); val('fresh','OFFLINE'); val('warning',String(error));
+    }
+  }
+  el('saveTarget').onclick = async () => {
+    try {
+      const raw = el('target').value.trim();
+      if (!raw || !Number.isFinite(Number(raw)) || Number(raw)<=0) throw new Error('Enter a valid positive target.');
+      const response = await fetch('/api/target',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:raw})});
+      if (!response.ok) throw new Error((await response.json()).error || 'Unable to set target');
+      val('saveStatus','Target updated'); await refresh();
+    } catch (e) { val('saveStatus',String(e)); }
+  };
+  el('copy').onclick = async () => {
+    if (!snapshot) return;
+    const lines = [
+      'Kalshi BRTI snapshot (actual index via Kalshi; read-only)',
+      'Source timestamp: '+(snapshot.observedAt || 'unavailable'),
+      'Connection: '+snapshot.status,
+      'Fresh: '+snapshot.dataFresh+'; local data age ms: '+snapshot.dataAgeMs,
+      'BRTI: '+snapshot.brti,
+      'Kalshi price to beat: '+snapshot.strike,
+      'BRTI minus target: '+snapshot.gap,
+      'Trailing average: '+snapshot.trailing60sAverage+' ('+snapshot.trailing60sCount+' prior ticks)',
+      'Final-minute server average: '+snapshot.finalMinuteAverage+' ('+snapshot.finalMinuteCount+' index observations)',
+      'Required remaining average IF exactly 60 equal samples: '+snapshot.requiredRemainingAverageAssuming60Samples,
+      'Warning: '+snapshot.warning,
+      'Interpret for the current 15-minute contract; do not substitute Webull for BRTI.'
+    ];
+    try { await navigator.clipboard.writeText(lines.join('\n')); val('copyStatus','Copied. Paste into your ChatGPT conversation.'); }
+    catch (e) { val('copyStatus','Clipboard unavailable. Use an updated browser or copy from /api/snapshot.'); }
+  };
+  refresh(); setInterval(refresh,1000);
+</script>
+</main></body>
+</html>

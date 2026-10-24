@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kalshi BTC 15m — Quote Quality & BRTI Research</title>
+  <style>
+    :root{font:16px/1.45 system-ui,Segoe UI,sans-serif;color:#eaf0ff;background:#101522}
+    *{box-sizing:border-box}body{margin:0;padding:30px 18px}main{max-width:1080px;margin:auto}
+    h1{font-size:1.9rem;margin:0}h2{font-size:1.05rem;margin:0 0 12px}
+    p{color:#9aaaca;margin:4px 0 16px}a{color:#b9d5ff}
+    .head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+    .pill{background:#263144;border-radius:18px;padding:7px 11px;font-weight:650;font-size:.8rem}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+    .metric,.panel{background:#1b2435;border:1px solid #354159;border-radius:14px;padding:17px}
+    .label{color:#a0b0c9;font-size:.83rem;margin-bottom:9px}
+    .value{font-variant-numeric:tabular-nums;font-size:1.46rem;font-weight:750;overflow-wrap:anywhere}
+    .hint{color:#a6b4cb;font-size:.83rem;margin-top:6px}
+    .status{margin:14px 0;padding:11px 13px;background:#2b2532;border:1px solid #6d4250;border-radius:10px}
+    .ok{color:#70e7b3}.bad{color:#ff9b9b}.row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid #354159}
+    .row:last-child{border-bottom:0}.cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:14px}
+    button{padding:12px 18px;border:0;border-radius:10px;color:#131b2c;background:#b8d6ff;font-weight:700;cursor:pointer}
+    .mono{font:0.83rem/1.5 Consolas,monospace;overflow-wrap:anywhere}
+    @media(max-width:700px){.grid,.cardgrid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><main>
+  <header class="head"><div><h1>Kalshi BTC 15-Minute Intelligence</h1><p>Automatic contract selection · Kalshi public order book · Actual BRTI · Read-only</p></div><span class="pill" id="state">Loading…</span></header>
+  <div class="status" id="warning">Waiting for the first market poll.</div>
+  <section class="grid" aria-label="Current market">
+    <div class="metric"><div class="label">Market</div><div class="value mono" id="ticker">—</div><div class="hint" id="close">—</div></div>
+    <div class="metric"><div class="label">Price to beat (Kalshi floor strike)</div><div class="value" id="strike">—</div><div class="hint">Automatically refreshed on each new 15m contract</div></div>
+    <div class="metric"><div class="label">Actual BRTI</div><div class="value" id="brti">—</div><div class="hint" id="gap">Waiting for index</div></div>
+    <div class="metric"><div class="label">BUY YES (best ask)</div><div class="value" id="yesAsk">—</div><div class="hint" id="yesSize">—</div></div>
+    <div class="metric"><div class="label">BUY NO (best ask)</div><div class="value" id="noAsk">—</div><div class="hint" id="noSize">—</div></div>
+    <div class="metric"><div class="label">Time remaining</div><div class="value" id="seconds">—</div><div class="hint">Quote poll ~5 seconds; not executable orders</div></div>
+  </section>
+  <div class="cardgrid">
+    <div class="panel"><h2>Order book top bid</h2>
+      <div class="row"><span>YES best bid</span><b id="yesBid">—</b></div>
+      <div class="row"><span>NO best bid</span><b id="noBid">—</b></div>
+      <div class="row"><span>Market volume (contracts)</span><b id="volume">—</b></div>
+      <div class="row"><span>Open interest</span><b id="oi">—</b></div>
+    </div>
+    <div class="panel"><h2>Index and settlement data</h2>
+      <div class="row"><span>Trailing 60 index ticks</span><b id="roll">—</b></div>
+      <div class="row"><span>Final-minute Kalshi average</span><b id="final">—</b></div>
+      <div class="row"><span>Index timestamp</span><span id="observed" class="mono">—</span></div>
+      <div class="row"><span>Market fetch time</span><span id="fetched" class="mono">—</span></div>
+    </div>
+  </div>
+  <div class="cardgrid" aria-label="Quote safeguards and research economics">
+    <div class="panel"><h2>Quote reconciliation</h2>
+      <div class="row"><span>Quality status</span><b id="quality">—</b></div>
+      <div class="row"><span>Quote reasons</span><span id="qualityReason" class="mono">—</span></div>
+      <div class="row"><span>YES ask, market reference</span><b id="marketYesAsk">—</b></div>
+      <div class="row"><span>NO ask, market reference</span><b id="marketNoAsk">—</b></div>
+      <div class="row"><span>YES ask disagreement</span><b id="yesDelta">—</b></div>
+      <div class="row"><span>NO ask disagreement</span><b id="noDelta">—</b></div>
+      <div class="row"><span>Quote poll duration</span><b id="pollDuration">—</b></div>
+    </div>
+    <div class="panel"><h2>Fee-aware price thresholds (illustrative)</h2>
+      <div class="row"><span>YES fee, 1 contract</span><b id="yesFee">—</b></div>
+      <div class="row"><span>YES break-even probability</span><b id="yesBreak">—</b></div>
+      <div class="row"><span>NO fee, 1 contract</span><b id="noFee">—</b></div>
+      <div class="row"><span>NO break-even probability</span><b id="noBreak">—</b></div>
+      <div class="row"><span>Market & index ready for analysis?</span><b id="analysisReady">—</b></div>
+      <div class="row"><span>Current trade decision</span><b class="bad">NO TRADE — model not calibrated</b></div>
+      <p style="margin-top:12px">Estimates apply the published general taker fee to a 1-contract illustration. Market-specific overrides, order-preview fees, slippage, and fill risk can change results. A break-even threshold is <strong>not</strong> an estimated winning probability.</p>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:14px"><button id="copy">Copy combined snapshot for ChatGPT</button><span id="copied" style="margin-left:12px" class="hint"></span></div>
+  <p style="margin-top:14px">Read-only market observations, not predictions, order instructions, or confirmed fills. BRTI and quote samples are saved locally at approximately one-second intervals to support future backtesting (some observations may be missed). REST quote timestamps reflect local receipt, not guaranteed exchange propagation latency. Do not place trades based on stale/missing market or BRTI data. <a href="/">Original BRTI dashboard</a></p>
+</main>
+<script>
+let latest = null;
+const el = id=>document.getElementById(id);
+const set = (id,v)=>el(id).textContent=v;
+const money = (x,n=2)=>x==null?'—':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:n,maximumFractionDigits:4}).format(Number(x));
+const quote = x => x==null ? '—' : (Number(x)*100).toFixed(2)+'¢';
+const fmtDate = x=> x ? new Date(x).toLocaleTimeString() : '—';
+async function update(){
+ try {
+  const res=await fetch('/api/market/combined',{cache:'no-store'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const body=await res.json(); latest=body;
+  const m=body.market||{}, b=body.brti||{};
+  const good=body.validForSettlementComparison;
+  set('state',good?'BRTI + Market Fresh':'CHECK DATA FRESHNESS');el('state').className='pill '+(good?'ok':'bad');
+  set('ticker',m.ticker||'No active contract');
+  set('close',m.closeTime?'Closes '+fmtDate(m.closeTime):m.state||'—');
+  set('strike',money(m.priceToBeat));set('brti',money(b.brti));
+  set('gap',good&&b.gap!=null?(Number(b.gap)>=0?'+':'')+money(b.gap)+' versus strike':'Strike/index not both fresh');
+  set('yesAsk',quote(m.yesAskDollars));set('noAsk',quote(m.noAskDollars));
+  set('yesSize',m.yesAskSize==null?'No orderbook ask':m.yesAskSize+' contracts at best ask');
+  set('noSize',m.noAskSize==null?'No orderbook ask':m.noAskSize+' contracts at best ask');
+  set('seconds',m.secondsToClose==null?'—':m.secondsToClose+' s');
+  set('yesBid',quote(m.yesBidDollars));set('noBid',quote(m.noBidDollars));
+  set('volume',m.volumeFp??'—');set('oi',m.openInterestFp??'—');
+  set('roll',money(b.trailing60sAverage));set('final',money(b.finalMinuteAverage));
+  set('observed',fmtDate(b.observedAt));set('fetched',fmtDate(m.fetchedAt));
+  const q=m.quoteQuality||{}, fees=q.illustrativeOneContractFeesAndBreakevens||{};
+  const y=fees.yes||{}, n=fees.no||{};
+  set('quality', q.status||'—');
+  set('qualityReason', Array.isArray(q.reasons)?(q.reasons.join(', ')||'None'):'—');
+  set('marketYesAsk',quote(m.marketYesAskDollars));set('marketNoAsk',quote(m.marketNoAskDollars));
+  set('yesDelta',money(q.yesAskDifferenceDollars,4));set('noDelta',money(q.noAskDifferenceDollars,4));
+  set('pollDuration',m.pollDurationMs==null?'—':m.pollDurationMs+' ms');
+  set('yesFee',money(y.generalTakerFeeDollarsOneContract,4));
+  set('noFee',money(n.generalTakerFeeDollarsOneContract,4));
+  set('yesBreak',y.breakevenYesOrNoProbabilityOneContract==null?'—':(100*Number(y.breakevenYesOrNoProbabilityOneContract)).toFixed(3)+'%');
+  set('noBreak',n.breakevenYesOrNoProbabilityOneContract==null?'—':(100*Number(n.breakevenYesOrNoProbabilityOneContract)).toFixed(3)+'%');
+  set('analysisReady',body.quoteAndSettlementDataReadyForAnalysis?'YES (not a trade signal)':'NO');
+  set('warning',m.error ? 'Market discovery: '+m.error
+      : q.status==='BLOCKED' ? 'Quote verification blocked: '+(q.reasons||[]).join(', ')+'. Not usable for trade evaluation.'
+      : body.warning);
+ } catch(e){set('state','OFFLINE');set('warning','API unavailable: '+e.message)}
+}
+el('copy').onclick=async()=>{
+ if(!latest)return;
+ const json=JSON.stringify(latest,null,2);
+ try{await navigator.clipboard.writeText('Kalshi BTC 15m live combined snapshot (read-only):\n'+json);set('copied','Copied');}
+ catch(e){set('copied','Copy failed; use browser clipboard permissions')}
+};
+update();setInterval(update,2500);
+</script>
+</body></html>
