@@ -52,6 +52,42 @@ Open `http://127.0.0.1:8080`. The application binds to localhost. Without creden
 | `/api/intelligence/technical` | Technical indicators         |
 | `/mcp`                        | Read-only JSON-RPC interface |
 
+## Rapid BRTI reversal diagnostics (feature branch)
+
+The `/api/snapshot` endpoint now includes a nested `reversal` object from
+`BrtiReversalMath`. The established response fields are unchanged. The
+diagnostic uses only the timestamped official BRTI values already received by
+the WebSocket; it does **not** substitute Kraken/Webull spot prices.
+
+- `change5s`, `change15s`, `change30s`, `change60s`: signed BRTI changes
+  between the most recent observation and a source-timestamp-aligned anchor.
+- `previous15sChange` and `acceleration15s`: the prior 15-second move and
+  the difference between consecutive 15-second moves.
+- `trailing60sAverageChange15s/30s/60s`: changes in the upstream-reported
+  trailing average; these are not official settlement outcomes.
+- `high60s`, `low60s`, `range60s`: observed values in the most recent
+  minute when sufficient history exists.
+- `strikeCrossingLast5s`: whether the latest BRTI crossed the current
+  price-to-beat in the last five seconds.
+- `alert`: `BULLISH_REVERSAL_WATCH`, `BEARISH_REVERSAL_WATCH`,
+  `RAPID_UPWARD_MOVE`, `RAPID_DOWNWARD_MOVE`,
+  `NO_HIGH_SPEED_ALERT`, or `UNAVAILABLE`.
+
+Data ages and missing observations are explicit. A historical anchor more than
+three seconds from its requested timestamp is unavailable, rather than
+fabricated. History is bounded to 120 seconds and at most 150 samples.
+Until enough samples accumulate, `status` is `PARTIAL_HISTORY`;
+a stale feed returns `STALE` and `UNAVAILABLE` rather than a signal.
+
+**Do not use these heuristic thresholds as a probability forecast or order
+trigger.** They require historical replay/backtests, validation against
+official Kalshi settlements, and accounting for spread/fees before evaluating
+a trading edge. An alert may appear after a reversal has started, can miss
+fast excursions between index updates, and does not imply a profitable fill.
+The existing `NO_TRADE_UNTIL_PROBABILITY_MODEL_VALIDATED` policy is unchanged.
+
+No trades are placed and no external exchange order-flow history is claimed.
+
 ## Verification
 
 Run `./mvnw test` and `node --test demo/quality.test.mjs`. Tests need no live credentials; they do not establish live connectivity or forecast performance.
