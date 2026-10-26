@@ -263,23 +263,56 @@
           <div class="mini mono" id="ticker">—</div>
         </div>
       </div>
-      <section class="panel" aria-label="Fast official BRTI reversal monitor" style="margin: 14px 0">
+      <section
+        class="panel"
+        aria-label="Fast official BRTI reversal monitor"
+        style="margin: 14px 0"
+      >
         <header>
           <h2>Official BRTI — 1-second reversal monitor</h2>
           <span class="pill warn" id="rapidAlert" role="status">WAITING FOR LIVE BRTI</span>
         </header>
-        <p class="mini" id="rapidMeta">This monitor uses official BRTI observations, not completed Kraken candles.</p>
+        <p class="mini" id="rapidMeta">
+          This monitor uses official BRTI observations, not completed Kraken candles.
+        </p>
         <div class="grid" style="margin-top: 10px">
-          <div><div class="label">BRTI versus strike</div><div class="value" id="rapidGap">—</div></div>
-          <div><div class="label">5s / 15s BRTI change</div><div class="value" id="rapidShort">—</div></div>
-          <div><div class="label">30s / 60s BRTI change</div><div class="value" id="rapidLong">—</div></div>
-          <div><div class="label">15s acceleration</div><div class="value" id="rapidAcceleration">—</div></div>
-          <div><div class="label">60s trailing BRTI average</div><div class="value" id="rapidAverage">—</div></div>
-          <div><div class="label">Strike crossing (last 5s)</div><div class="value" id="rapidCross">—</div></div>
+          <div>
+            <div class="label">BRTI versus strike</div>
+            <div class="value" id="rapidGap">—</div>
+          </div>
+          <div>
+            <div class="label">5s / 15s BRTI change</div>
+            <div class="value" id="rapidShort">—</div>
+          </div>
+          <div>
+            <div class="label">30s / 60s BRTI change</div>
+            <div class="value" id="rapidLong">—</div>
+          </div>
+          <div>
+            <div class="label">15s acceleration</div>
+            <div class="value" id="rapidAcceleration">—</div>
+          </div>
+          <div>
+            <div class="label">60s trailing BRTI average</div>
+            <div class="value" id="rapidAverage">—</div>
+          </div>
+          <div>
+            <div class="label">Strike crossing (last 5s)</div>
+            <div class="value" id="rapidCross">—</div>
+          </div>
         </div>
-        <div class="row"><span>Official final-minute BRTI average (samples)</span><b id="rapidFinalAverage">Not started</b></div>
-        <div class="row"><span>Required average of remaining samples to finish above strike</span><b id="rapidRequired">Not started</b></div>
-        <div class="mini">Research alerts only. Sudden price changes can precede the alert. No calibrated settlement probability or automated trade.</div>
+        <div class="row">
+          <span>Official final-minute BRTI average (samples)</span
+          ><b id="rapidFinalAverage">Not started</b>
+        </div>
+        <div class="row">
+          <span>Required average of remaining samples to finish above strike</span
+          ><b id="rapidRequired">Not started</b>
+        </div>
+        <div class="mini">
+          Research alerts only. Sudden price changes can precede the alert. No calibrated settlement
+          probability or automated trade.
+        </div>
       </section>
       <div class="cols">
         <section class="panel">
@@ -453,8 +486,7 @@
       // the existing, slower intelligence refresh.
       let fastPending = false;
       let latestFast = null;
-      const signedCash = (x) =>
-        x == null ? "—" : (Number(x) >= 0 ? "+" : "") + cash(x);
+      const signedCash = (x) => (x == null ? "—" : (Number(x) >= 0 ? "+" : "") + cash(x));
       async function updateReversal() {
         if (fastPending) return;
         fastPending = true;
@@ -467,13 +499,24 @@
           const b = await response.json();
           latestFast = b;
           const rev = b.reversal || {};
-          const good = b.dataFresh === true && rev.status !== "STALE" && rev.status !== "INSUFFICIENT_HISTORY";
+          const good =
+            b.dataFresh === true && rev.status !== "STALE" && rev.status !== "INSUFFICIENT_HISTORY";
           const alert = el("rapidAlert");
           if (!good) {
             alert.textContent = "STALE / UNAVAILABLE";
             alert.className = "pill bad";
-            set("rapidMeta", "BRTI is unavailable, stale, or awaiting its first reading. Suppress reversal signals.");
-            for (const id of ["rapidGap", "rapidShort", "rapidLong", "rapidAcceleration", "rapidAverage", "rapidCross"])
+            set(
+              "rapidMeta",
+              "BRTI is unavailable, stale, or awaiting its first reading. Suppress reversal signals.",
+            );
+            for (const id of [
+              "rapidGap",
+              "rapidShort",
+              "rapidLong",
+              "rapidAcceleration",
+              "rapidAverage",
+              "rapidCross",
+            ])
               set(id, "—");
             set("rapidFinalAverage", "Unavailable");
             set("rapidRequired", "Unavailable");
@@ -481,14 +524,25 @@
           }
           const label = rev.alert || "UNAVAILABLE";
           alert.textContent = label.replaceAll("_", " ");
-          alert.className = "pill " +
-            (label.includes("BEARISH") || label === "RAPID_DOWNWARD_MOVE" ? "bad" :
-              label.includes("BULLISH") || label === "RAPID_UPWARD_MOVE" ? "good" : "warn");
-          set("rapidMeta",
-            "Official sample " + stamp(b.observedAt) +
-            " · feed age " + value(b.dataAgeMs, 0) + "ms" +
-            " · history: " + asText(rev.status) +
-            " · samples: " + asText(rev.sampleCount));
+          alert.className =
+            "pill " +
+            (label.includes("BEARISH") || label === "RAPID_DOWNWARD_MOVE"
+              ? "bad"
+              : label.includes("BULLISH") || label === "RAPID_UPWARD_MOVE"
+                ? "good"
+                : "warn");
+          set(
+            "rapidMeta",
+            "Official sample " +
+              stamp(b.observedAt) +
+              " · feed age " +
+              value(b.dataAgeMs, 0) +
+              "ms" +
+              " · history: " +
+              asText(rev.status) +
+              " · samples: " +
+              asText(rev.sampleCount),
+          );
           set("rapidGap", signedCash(b.gap));
           set("rapidShort", signedCash(rev.change5s) + " / " + signedCash(rev.change15s));
           set("rapidLong", signedCash(rev.change30s) + " / " + signedCash(rev.change60s));
@@ -511,11 +565,21 @@
           const alert = el("rapidAlert");
           alert.textContent = "OFFLINE / NOT LIVE";
           alert.className = "pill bad";
-          set("rapidMeta", "Fast official BRTI readings could not be fetched. Do not rely on old reversal alerts.");
+          set(
+            "rapidMeta",
+            "Fast official BRTI readings could not be fetched. Do not rely on old reversal alerts.",
+          );
           set("rapidFinalAverage", "Unavailable");
           set("rapidRequired", "Unavailable");
           latestFast = null;
-          for (const id of ["rapidGap", "rapidShort", "rapidLong", "rapidAcceleration", "rapidAverage", "rapidCross"])
+          for (const id of [
+            "rapidGap",
+            "rapidShort",
+            "rapidLong",
+            "rapidAcceleration",
+            "rapidAverage",
+            "rapidCross",
+          ])
             set(id, "—");
         } finally {
           fastPending = false;

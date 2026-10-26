@@ -31,7 +31,10 @@ public final class BrtiReversalMath {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("dataFresh", dataFresh);
         out.put("sampleCount", observations.size());
-        out.put("policy", "BRTI-only timing diagnostics. No validated win probabilities or trading instructions.");
+        out.put(
+            "policy",
+            "BRTI-only timing diagnostics. No validated win probabilities or trading instructions."
+        );
         if (!dataFresh || observations.isEmpty()) {
             out.put("status", dataFresh ? "INSUFFICIENT_HISTORY" : "STALE");
             out.put("alert", "UNAVAILABLE");
@@ -58,18 +61,18 @@ public final class BrtiReversalMath {
         out.put("change60s", delta60);
         out.put("previous15sChange", previous15);
         out.put("acceleration15s", acceleration15);
-        out.put("trailing60sAverageChange15s", change(
-            latest.trailing60sAverage(),
-            at15 == null ? null : at15.trailing60sAverage()
-        ));
-        out.put("trailing60sAverageChange30s", change(
-            latest.trailing60sAverage(),
-            at30 == null ? null : at30.trailing60sAverage()
-        ));
-        out.put("trailing60sAverageChange60s", change(
-            latest.trailing60sAverage(),
-            at60 == null ? null : at60.trailing60sAverage()
-        ));
+        out.put(
+            "trailing60sAverageChange15s",
+            change(latest.trailing60sAverage(), at15 == null ? null : at15.trailing60sAverage())
+        );
+        out.put(
+            "trailing60sAverageChange30s",
+            change(latest.trailing60sAverage(), at30 == null ? null : at30.trailing60sAverage())
+        );
+        out.put(
+            "trailing60sAverageChange60s",
+            change(latest.trailing60sAverage(), at60 == null ? null : at60.trailing60sAverage())
+        );
 
         if (at60 != null) {
             BigDecimal high = latest.price();
@@ -103,25 +106,40 @@ public final class BrtiReversalMath {
         out.put("strikeCrossingLast5s", at5 == null ? "INSUFFICIENT_HISTORY" : crossing);
 
         String alert = "NO_HIGH_SPEED_ALERT";
-        if (delta15 != null && previous15 != null &&
+        if (
+            delta15 != null &&
+            previous15 != null &&
             delta15.compareTo(FIFTEEN_SECOND_SHARP_MOVE) >= 0 &&
-            previous15.compareTo(PREVIOUS_MOVE_OPPOSITE.negate()) <= 0) {
+            previous15.compareTo(PREVIOUS_MOVE_OPPOSITE.negate()) <= 0
+        ) {
             alert = "BULLISH_REVERSAL_WATCH";
-        } else if (delta15 != null && previous15 != null &&
+        } else if (
+            delta15 != null &&
+            previous15 != null &&
             delta15.compareTo(FIFTEEN_SECOND_SHARP_MOVE.negate()) <= 0 &&
-            previous15.compareTo(PREVIOUS_MOVE_OPPOSITE) >= 0) {
+            previous15.compareTo(PREVIOUS_MOVE_OPPOSITE) >= 0
+        ) {
             alert = "BEARISH_REVERSAL_WATCH";
-        } else if (delta15 != null && delta5 != null &&
+        } else if (
+            delta15 != null &&
+            delta5 != null &&
             delta15.compareTo(RAPID_FIFTEEN_SECOND_MOVE) >= 0 &&
-            delta5.compareTo(RAPID_FIVE_SECOND_MOVE) >= 0) {
+            delta5.compareTo(RAPID_FIVE_SECOND_MOVE) >= 0
+        ) {
             alert = "RAPID_UPWARD_MOVE";
-        } else if (delta15 != null && delta5 != null &&
+        } else if (
+            delta15 != null &&
+            delta5 != null &&
             delta15.compareTo(RAPID_FIFTEEN_SECOND_MOVE.negate()) <= 0 &&
-            delta5.compareTo(RAPID_FIVE_SECOND_MOVE.negate()) <= 0) {
+            delta5.compareTo(RAPID_FIVE_SECOND_MOVE.negate()) <= 0
+        ) {
             alert = "RAPID_DOWNWARD_MOVE";
         }
         out.put("alert", alert);
-        out.put("warning", "Price change thresholds are heuristic watch flags, not calibrated forecasts. Confirm against official final-minute BRTI average.");
+        out.put(
+            "warning",
+            "Price change thresholds are heuristic watch flags, not calibrated forecasts. Confirm against official final-minute BRTI average."
+        );
         return out;
     }
 

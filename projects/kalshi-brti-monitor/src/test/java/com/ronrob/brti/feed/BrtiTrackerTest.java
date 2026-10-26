@@ -52,7 +52,9 @@ class BrtiTrackerTest {
         long startingTime = System.currentTimeMillis() - 60_000;
         for (int i = 0; i <= 60; i++) {
             int price = i <= 45 ? 80_000 + 2 * i : 80_090 - 5 * (i - 45);
-            tracker.accept(mapper.readTree(message(startingTime + i * 1_000L, Integer.toString(price))));
+            tracker.accept(
+                mapper.readTree(message(startingTime + i * 1_000L, Integer.toString(price)))
+            );
         }
         Map<String, Object> reversal = (Map<String, Object>) tracker.snapshot().get("reversal");
         assertNotNull(reversal);
@@ -69,7 +71,9 @@ class BrtiTrackerTest {
         tracker.setStrike(new BigDecimal("80000"));
         long start = System.currentTimeMillis() - 10_000;
         for (int i = 0; i <= 10; i++) {
-            tracker.accept(mapper.readTree(message(start + 1_000L * i, Integer.toString(80000 + i))));
+            tracker.accept(
+                mapper.readTree(message(start + 1_000L * i, Integer.toString(80000 + i)))
+            );
         }
         tracker.setStrike(new BigDecimal("80000.00"));
         Map<String, Object> same = (Map<String, Object>) tracker.snapshot().get("reversal");

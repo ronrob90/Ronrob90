@@ -9,6 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class BrtiReversalMathTest {
+
     private static final long BASE = 1_782_000_000_000L;
 
     @Test

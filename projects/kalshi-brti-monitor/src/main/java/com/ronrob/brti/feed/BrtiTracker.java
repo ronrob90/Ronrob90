@@ -95,9 +95,11 @@ public class BrtiTracker {
         // not the arrival time or an unrelated spot exchange.
         reversalSamples.addLast(new BrtiReversalMath.Sample(timestamp, latest, rolling60));
         long oldestAllowed = timestamp - REVERSAL_HISTORY_MS;
-        while (!reversalSamples.isEmpty() &&
-               (reversalSamples.peekFirst().timestampMs() < oldestAllowed ||
-                reversalSamples.size() > MAX_REVERSAL_SAMPLES)) {
+        while (
+            !reversalSamples.isEmpty() &&
+            (reversalSamples.peekFirst().timestampMs() < oldestAllowed ||
+                reversalSamples.size() > MAX_REVERSAL_SAMPLES)
+        ) {
             reversalSamples.removeFirst();
         }
         JsonNode settlement = msg.path("last_60s_windowed_average_15min");
@@ -138,7 +140,10 @@ public class BrtiTracker {
         result.put("gap", latest != null && strike != null ? latest.subtract(strike) : null);
         result.put("trailing60sAverage", rolling60);
         result.put("trailing60sCount", rollingCount);
-        result.put("reversal", BrtiReversalMath.analyze(new ArrayList<>(reversalSamples), strike, fresh));
+        result.put(
+            "reversal",
+            BrtiReversalMath.analyze(new ArrayList<>(reversalSamples), strike, fresh)
+        );
         result.put("finalMinuteAverage", finalMinuteAverage);
         result.put("finalMinuteCount", finalMinuteCount);
         BigDecimal required = null;
