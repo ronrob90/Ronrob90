@@ -47,12 +47,26 @@ public class BrtiTracker {
         ) {
             throw new IllegalArgumentException("Enter a valid positive BTC price to beat.");
         }
+        if (strike == null || strike.compareTo(newStrike) != 0) {
+            // A new contract must not inherit the previous strike's reversal
+            // window or settle using a tick observed before discovery.
+            reversalSamples.clear();
+            latest = null;
+            rolling60 = null;
+            rollingCount = null;
+            finalMinuteAverage = null;
+            finalMinuteCount = null;
+            receivedLocallyMs = null;
+        }
         strike = newStrike;
     }
 
     /** Clear old contract target when current-window discovery fails or rolls over. */
     public synchronized void clearStrike() {
         strike = null;
+        reversalSamples.clear();
+        finalMinuteAverage = null;
+        finalMinuteCount = null;
     }
 
     public synchronized void status(String status, String error) {
