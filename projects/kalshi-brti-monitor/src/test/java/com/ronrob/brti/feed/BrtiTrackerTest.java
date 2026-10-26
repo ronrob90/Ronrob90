@@ -43,6 +43,24 @@ class BrtiTrackerTest {
         assertEquals(new BigDecimal("81001"), tracker.snapshot().get("brti"));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void exposesTimeAlignedBearishReversalInLiveSnapshot() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        BrtiTracker tracker = new BrtiTracker(mapper);
+        tracker.setStrike(new BigDecimal("80030"));
+        long startingTime = System.currentTimeMillis() - 60_000;
+        for (int i = 0; i <= 60; i++) {
+            int price = i <= 45 ? 80_000 + 2 * i : 80_090 - 5 * (i - 45);
+            tracker.accept(mapper.readTree(message(startingTime + i * 1_000L, Integer.toString(price))));
+        }
+        Map<String, Object> reversal = (Map<String, Object>) tracker.snapshot().get("reversal");
+        assertNotNull(reversal);
+        assertEquals("READY", reversal.get("status"));
+        assertEquals("BEARISH_REVERSAL_WATCH", reversal.get("alert"));
+        assertEquals(new BigDecimal("-75"), reversal.get("change15s"));
+    }
+
     private String message(long timestamp, String price) {
         return """
         {"type":"cfbenchmarks_value","msg":{"index_id":"BRTI",
