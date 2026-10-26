@@ -42,7 +42,7 @@ class BrtiReversalMathTest {
         assertEquals("BULLISH_REVERSAL_WATCH", result.get("alert"));
         assertEquals(new BigDecimal("75"), result.get("change15s"));
         assertEquals(new BigDecimal("-30"), result.get("previous15sChange"));
-        assertEquals("INSUFFICIENT_HISTORY".equals(result.get("strikeCrossingLast5s")), false);
+        assertEquals("NONE", result.get("strikeCrossingLast5s"));
     }
 
     @Test
