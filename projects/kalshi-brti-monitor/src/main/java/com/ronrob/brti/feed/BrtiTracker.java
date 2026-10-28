@@ -146,6 +146,19 @@ public class BrtiTracker {
         );
         result.put("finalMinuteAverage", finalMinuteAverage);
         result.put("finalMinuteCount", finalMinuteCount);
+        // Read-only, rounding-aware final-minute settlement arithmetic.
+        // Fail closed outside the official final minute or on stale data.
+        result.put(
+            "settlementMath",
+            BrtiSettlementMath.analyze(
+                strike,
+                latest,
+                finalMinuteAverage,
+                finalMinuteCount,
+                sourceTimestampMs,
+                fresh
+            )
+        );
         BigDecimal required = null;
         // This is a conditional arithmetic illustration assuming 60 equally-weighted
         // index samples in the window. Kalshi's server-provided average is authoritative.
