@@ -199,6 +199,16 @@
           </div>
         </div>
         <div class="metric">
+          <div class="label">Rounded YES threshold — remaining BRTI readings</div>
+          <div class="value" id="roundedRequired">—</div>
+          <div class="sub" id="settlementStatus">Waiting for final minute</div>
+        </div>
+        <div class="metric">
+          <div class="label">If remaining BRTI readings stay flat</div>
+          <div class="value" id="flatSettlement">—</div>
+          <div class="sub" id="flatSettlementSide">Scenario only — not a prediction</div>
+        </div>
+        <div class="metric">
           <div class="label">Feed freshness</div>
           <div class="value" id="fresh">—</div>
           <div class="sub" id="statusLine">—</div>
@@ -265,6 +275,23 @@
                 : snapshot.finalMinuteCount + " accumulated index observations",
             );
             val("required", usd(snapshot.requiredRemainingAverageAssuming60Samples));
+            const settlement = snapshot.settlementMath || {};
+            val("roundedRequired", usd(settlement.requiredRemainingAverageForYesAssumingHalfUp));
+            val(
+              "settlementStatus",
+              settlement.status === "COLLECTING"
+                ? settlement.observationsRemaining + " BRTI readings left; assumption: half-up midpoint rounding"
+                : settlement.status === "COMPLETE_UNVERIFIED"
+                  ? "Complete but NOT officially verified; provisional: " + (settlement.provisionalSide || "—")
+                  : (settlement.status || "Waiting for settlement data"),
+            );
+            val("flatSettlement", usd(settlement.flatPriceScenarioRoundedAverage));
+            val(
+              "flatSettlementSide",
+              settlement.flatPriceScenarioSide == null
+                ? "Scenario only — not a prediction"
+                : "Hypothetical: " + settlement.flatPriceScenarioSide + " · live observations can change this",
+            );
             val(
               "observed",
               snapshot.observedAt

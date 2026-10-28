@@ -52,6 +52,78 @@ Open `http://127.0.0.1:8080`. The application binds to localhost. Without creden
 | `/api/intelligence/technical` | Technical indicators         |
 | `/mcp`                        | Read-only JSON-RPC interface |
 
+## Rapid BRTI reversal diagnostics (feature branch)
+
+The `/api/snapshot` endpoint now includes a nested `reversal` object from
+`BrtiReversalMath`. The established response fields are unchanged. The
+diagnostic uses only the timestamped official BRTI values already received by
+the WebSocket; it does **not** substitute Kraken/Webull spot prices.
+
+- `change5s`, `change15s`, `change30s`, `change60s`: signed BRTI changes
+  between the most recent observation and a source-timestamp-aligned anchor.
+- `previous15sChange` and `acceleration15s`: the prior 15-second move and
+  the difference between consecutive 15-second moves.
+- `trailing60sAverageChange15s/30s/60s`: changes in the upstream-reported
+  trailing average; these are not official settlement outcomes.
+- `high60s`, `low60s`, `range60s`: observed values in the most recent
+  minute when sufficient history exists.
+- `strikeCrossingLast5s`: whether the latest BRTI crossed the current
+  price-to-beat in the last five seconds.
+- `alert`: `BULLISH_REVERSAL_WATCH`, `BEARISH_REVERSAL_WATCH`,
+  `RAPID_UPWARD_MOVE`, `RAPID_DOWNWARD_MOVE`,
+  `NO_HIGH_SPEED_ALERT`, or `UNAVAILABLE`.
+
+Data ages and missing observations are explicit. A historical anchor more than
+three seconds from its requested timestamp is unavailable, rather than
+fabricated. History is bounded to 120 seconds and at most 150 samples.
+Until enough samples accumulate, `status` is `PARTIAL_HISTORY`;
+a stale feed returns `STALE` and `UNAVAILABLE` rather than a signal.
+
+**Do not use these heuristic thresholds as a probability forecast or order
+trigger.** They require historical replay/backtests, validation against
+official Kalshi settlements, and accounting for spread/fees before evaluating
+a trading edge. An alert may appear after a reversal has started, can miss
+fast excursions between index updates, and does not imply a profitable fill.
+The existing `NO_TRADE_UNTIL_PROBABILITY_MODEL_VALIDATED` policy is unchanged.
+
+No trades are placed and no external exchange order-flow history is claimed.
+
+## Final-minute rounding-aware settlement diagnostics (feature branch)
+
+The existing `/api/snapshot` and `get_brti_snapshot` read-only MCP tool now
+include an additional `settlementMath` object, while all previous fields
+remain in place. The local BRTI dashboard displays the rounded YES threshold
+and a hypothetical flat-price final-minute average.
+
+- Before the final minute: `WAITING_FOR_FINAL_MINUTE`; no remaining-readings
+  threshold or inferred winner is supplied.
+- During the final minute: `COLLECTING`, upstream
+  `last_60s_windowed_average_15min` and `window_size` are used directly.
+  A 60-observation minute is assumed as specified in the market rules.
+  If `n` samples are collected with upstream average `A`, the mathematical
+  average required for remaining samples, ignoring rounding, is
+  `(60 * priceToBeat - n * A) / (60 - n)`.
+- Since Kalshi's displayed final value rounds to two decimals, the additional
+  `requiredRemainingAverageForYesAssumingHalfUp` uses
+  `priceToBeat - 0.005` at the threshold. This assumes half-up handling
+  of exact midpoint ties: **Kalshi's exact halfway-tie rule is not yet
+  verified**. Differences below a cent remain sensitive to published data
+  precision and final exchange verification.
+- When 60 samples are present: `COMPLETE_UNVERIFIED` with
+  `provisionalRoundedAverage` and `provisionalSide`, **not** an asserted
+  official result. Missing/stale data and invalid window sizes fail closed.
+- `flatPriceScenarioRoundedAverage` assumes all remaining BRTI observations
+  equal the latest current BRTI value; it is a sensitivity check, **not** a
+  calibrated forecast or an automated decision.
+
+The official published final index and Kalshi settlement confirmation govern.
+Technical indicators, the rolling trailing-60s average outside the final
+minute, and spot charts are not substituted for final-minute official BRTI.
+
+The feature branch is not automatically deployed into a running IntelliJ
+process. Fetch the branch and restart the Java application after reviewing and
+running its tests; the existing running monitor is not modified by these commits.
+
 ## Verification
 
 Run `./mvnw test` and `node --test demo/quality.test.mjs`. Tests need no live credentials; they do not establish live connectivity or forecast performance.

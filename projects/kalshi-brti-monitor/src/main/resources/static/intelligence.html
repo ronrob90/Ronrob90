@@ -263,6 +263,57 @@
           <div class="mini mono" id="ticker">—</div>
         </div>
       </div>
+      <section
+        class="panel"
+        aria-label="Fast official BRTI reversal monitor"
+        style="margin: 14px 0"
+      >
+        <header>
+          <h2>Official BRTI — 1-second reversal monitor</h2>
+          <span class="pill warn" id="rapidAlert" role="status">WAITING FOR LIVE BRTI</span>
+        </header>
+        <p class="mini" id="rapidMeta">
+          This monitor uses official BRTI observations, not completed Kraken candles.
+        </p>
+        <div class="grid" style="margin-top: 10px">
+          <div>
+            <div class="label">BRTI versus strike</div>
+            <div class="value" id="rapidGap">—</div>
+          </div>
+          <div>
+            <div class="label">5s / 15s BRTI change</div>
+            <div class="value" id="rapidShort">—</div>
+          </div>
+          <div>
+            <div class="label">30s / 60s BRTI change</div>
+            <div class="value" id="rapidLong">—</div>
+          </div>
+          <div>
+            <div class="label">15s acceleration</div>
+            <div class="value" id="rapidAcceleration">—</div>
+          </div>
+          <div>
+            <div class="label">60s trailing BRTI average</div>
+            <div class="value" id="rapidAverage">—</div>
+          </div>
+          <div>
+            <div class="label">Strike crossing (last 5s)</div>
+            <div class="value" id="rapidCross">—</div>
+          </div>
+        </div>
+        <div class="row">
+          <span>Official final-minute BRTI average (samples)</span
+          ><b id="rapidFinalAverage">Not started</b>
+        </div>
+        <div class="row">
+          <span>Required average of remaining samples to finish above strike</span
+          ><b id="rapidRequired">Not started</b>
+        </div>
+        <div class="mini">
+          Research alerts only. Sudden price changes can precede the alert. No calibrated settlement
+          probability or automated trade.
+        </div>
+      </section>
       <div class="cols">
         <section class="panel">
           <h2>Last 48 completed 1-minute Kraken closes</h2>
@@ -430,6 +481,110 @@
                 "s",
         );
       }
+      // The official index feed is already streamed to BrtiTracker. Poll the local
+      // light-weight snapshot once a second; Kraken candle downloads remain on
+      // the existing, slower intelligence refresh.
+      let fastPending = false;
+      let latestFast = null;
+      const signedCash = (x) => (x == null ? "—" : (Number(x) >= 0 ? "+" : "") + cash(x));
+      async function updateReversal() {
+        if (fastPending) return;
+        fastPending = true;
+        try {
+          const response = await fetch("/api/snapshot", {
+            cache: "no-store",
+            signal: AbortSignal.timeout(2500),
+          });
+          if (!response.ok) throw Error("HTTP " + response.status);
+          const b = await response.json();
+          latestFast = b;
+          const rev = b.reversal || {};
+          const good =
+            b.dataFresh === true && rev.status !== "STALE" && rev.status !== "INSUFFICIENT_HISTORY";
+          const alert = el("rapidAlert");
+          if (!good) {
+            alert.textContent = "STALE / UNAVAILABLE";
+            alert.className = "pill bad";
+            set(
+              "rapidMeta",
+              "BRTI is unavailable, stale, or awaiting its first reading. Suppress reversal signals.",
+            );
+            for (const id of [
+              "rapidGap",
+              "rapidShort",
+              "rapidLong",
+              "rapidAcceleration",
+              "rapidAverage",
+              "rapidCross",
+            ])
+              set(id, "—");
+            set("rapidFinalAverage", "Unavailable");
+            set("rapidRequired", "Unavailable");
+            return;
+          }
+          const label = rev.alert || "UNAVAILABLE";
+          alert.textContent = label.replaceAll("_", " ");
+          alert.className =
+            "pill " +
+            (label.includes("BEARISH") || label === "RAPID_DOWNWARD_MOVE"
+              ? "bad"
+              : label.includes("BULLISH") || label === "RAPID_UPWARD_MOVE"
+                ? "good"
+                : "warn");
+          set(
+            "rapidMeta",
+            "Official sample " +
+              stamp(b.observedAt) +
+              " · feed age " +
+              value(b.dataAgeMs, 0) +
+              "ms" +
+              " · history: " +
+              asText(rev.status) +
+              " · samples: " +
+              asText(rev.sampleCount),
+          );
+          set("rapidGap", signedCash(b.gap));
+          set("rapidShort", signedCash(rev.change5s) + " / " + signedCash(rev.change15s));
+          set("rapidLong", signedCash(rev.change30s) + " / " + signedCash(rev.change60s));
+          set("rapidAcceleration", signedCash(rev.acceleration15s));
+          set("rapidAverage", cash(b.trailing60sAverage));
+          set("rapidCross", asText(rev.strikeCrossingLast5s));
+          set(
+            "rapidFinalAverage",
+            b.finalMinuteAverage == null
+              ? "Not started"
+              : cash(b.finalMinuteAverage) + " (" + asText(b.finalMinuteCount) + " samples)",
+          );
+          set(
+            "rapidRequired",
+            b.requiredRemainingAverageAssuming60Samples == null
+              ? "Not available"
+              : cash(b.requiredRemainingAverageAssuming60Samples),
+          );
+        } catch (error) {
+          const alert = el("rapidAlert");
+          alert.textContent = "OFFLINE / NOT LIVE";
+          alert.className = "pill bad";
+          set(
+            "rapidMeta",
+            "Fast official BRTI readings could not be fetched. Do not rely on old reversal alerts.",
+          );
+          set("rapidFinalAverage", "Unavailable");
+          set("rapidRequired", "Unavailable");
+          latestFast = null;
+          for (const id of [
+            "rapidGap",
+            "rapidShort",
+            "rapidLong",
+            "rapidAcceleration",
+            "rapidAverage",
+            "rapidCross",
+          ])
+            set(id, "—");
+        } finally {
+          fastPending = false;
+        }
+      }
       async function update() {
         try {
           const res = await fetch("/api/intelligence/combined", { cache: "no-store" });
@@ -508,7 +663,7 @@
         try {
           await navigator.clipboard.writeText(
             "Kalshi + Kraken spot BTC Technical Intelligence — read only; NOT a trade signal:\n" +
-              JSON.stringify(latest, null, 2),
+              JSON.stringify({ ...latest, latestOfficialBrtiSnapshot: latestFast }, null, 2),
           );
           set("copied", "Copied");
         } catch (e) {
@@ -516,7 +671,9 @@
         }
       };
       update();
+      updateReversal();
       setInterval(update, 10000);
+      setInterval(updateReversal, 1000);
       window.addEventListener("resize", () => {
         if (latest) line(el("plot"), latest.technical?.timeframes?.["1m"]?.recent48ClosedPrices);
       });

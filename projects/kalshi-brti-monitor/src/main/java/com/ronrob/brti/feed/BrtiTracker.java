@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -14,6 +17,9 @@ import org.springframework.stereotype.Component;
 public class BrtiTracker {
 
     private final ObjectMapper mapper;
+    private static final long REVERSAL_HISTORY_MS = 120_000L;
+    private static final int MAX_REVERSAL_SAMPLES = 150;
+    private final Deque<BrtiReversalMath.Sample> reversalSamples = new ArrayDeque<>();
     private BigDecimal strike;
     private BigDecimal latest;
     private Long sourceTimestampMs;
@@ -41,12 +47,26 @@ public class BrtiTracker {
         ) {
             throw new IllegalArgumentException("Enter a valid positive BTC price to beat.");
         }
+        if (strike == null || strike.compareTo(newStrike) != 0) {
+            // A new contract must not inherit the previous strike's reversal
+            // window or settle using a tick observed before discovery.
+            reversalSamples.clear();
+            latest = null;
+            rolling60 = null;
+            rollingCount = null;
+            finalMinuteAverage = null;
+            finalMinuteCount = null;
+            receivedLocallyMs = null;
+        }
         strike = newStrike;
     }
 
     /** Clear old contract target when current-window discovery fails or rolls over. */
     public synchronized void clearStrike() {
         strike = null;
+        reversalSamples.clear();
+        finalMinuteAverage = null;
+        finalMinuteCount = null;
     }
 
     public synchronized void status(String status, String error) {
@@ -71,6 +91,17 @@ public class BrtiTracker {
         JsonNode trailing = msg.path("avg_60s_data");
         rolling60 = moneyOrNull(trailing.path("value"));
         rollingCount = trailing.has("window_size") ? trailing.path("window_size").asInt() : null;
+        // Bounded BRTI history for reversal watches. This uses source timestamps,
+        // not the arrival time or an unrelated spot exchange.
+        reversalSamples.addLast(new BrtiReversalMath.Sample(timestamp, latest, rolling60));
+        long oldestAllowed = timestamp - REVERSAL_HISTORY_MS;
+        while (
+            !reversalSamples.isEmpty() &&
+            (reversalSamples.peekFirst().timestampMs() < oldestAllowed ||
+                reversalSamples.size() > MAX_REVERSAL_SAMPLES)
+        ) {
+            reversalSamples.removeFirst();
+        }
         JsonNode settlement = msg.path("last_60s_windowed_average_15min");
         // Present only during the minute before each :00/:15/:30/:45 close.
         finalMinuteAverage = moneyOrNull(settlement.path("value"));
@@ -109,8 +140,25 @@ public class BrtiTracker {
         result.put("gap", latest != null && strike != null ? latest.subtract(strike) : null);
         result.put("trailing60sAverage", rolling60);
         result.put("trailing60sCount", rollingCount);
+        result.put(
+            "reversal",
+            BrtiReversalMath.analyze(new ArrayList<>(reversalSamples), strike, fresh)
+        );
         result.put("finalMinuteAverage", finalMinuteAverage);
         result.put("finalMinuteCount", finalMinuteCount);
+        // Read-only, rounding-aware final-minute settlement arithmetic.
+        // Fail closed outside the official final minute or on stale data.
+        result.put(
+            "settlementMath",
+            BrtiSettlementMath.analyze(
+                strike,
+                latest,
+                finalMinuteAverage,
+                finalMinuteCount,
+                sourceTimestampMs,
+                fresh
+            )
+        );
         BigDecimal required = null;
         // This is a conditional arithmetic illustration assuming 60 equally-weighted
         // index samples in the window. Kalshi's server-provided average is authoritative.
